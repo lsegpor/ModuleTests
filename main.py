@@ -27,20 +27,21 @@ class Main:
         self._execute_lock = threading.Lock()
         
         self.step_times = {
-            "power_on_emu": 10,
-            "full_sync": 30,
-            "turn_hv_on": 6,
-            "read_lv_bc": 5,
-            "std_config": 20,
-            "read_asic_id": 10,
-            "set_trim_default": 3,
-            "read_lv_ac": 2,
-            "check_vddm_temp": 8,
-            "set_trim_calib": 2,
-            "check_trim": 2,
-            "get_vrefs": 3,
-            "set_calib_par": 2,
-            "get_trim": 1,
+            "power_on_emu": 2,
+            "full_sync": 28,
+            "turn_hv_on": 2,
+            "read_lv_bc": 1,
+            "std_config": 6,
+            "read_asic_id": 1,
+            "set_Trim_default": 65,
+            "read_lv_ac": 10,
+            "read_emu": 1,
+            "check_vddm_temp": 3,
+            "set_trim_calib": 69,
+            "check_trim": 7200,
+            "get_vrefs": 250,
+            "set_calib_par": 1,
+            "get_trim": 10800,
             "turn_hv_off": 6,
             "conn_check": 8,
             "reg_config_stress": 10,
@@ -116,7 +117,7 @@ class Main:
             print(self.vd.module_dir)
             pscan_dir = self.df.making_pscan_dir(self.vd.module_dir)
             trim_dir = self.df.making_trim_dir(self.vd.module_dir)
-            trim_dir = self.vd.calibration_data_path + "/" + str(self.vd.ladder_sn) + "/" + str(module_sn) + "/trim_files/"
+            #trim_dir = self.vd.calibration_data_path + "/" + str(self.vd.ladder_sn) + "/" + str(module_sn) + "/trim_files/"
             update_calib_path(self.vd.calibration_data_path + "/" + str(self.vd.ladder_sn) + "/" + str(module_sn) + "/trim_files")
             update_save_path(str(self.vd.ladder_sn) + "/" + str(module_sn))
             print(trim_dir)
