@@ -3,8 +3,14 @@ import logging
 from datetime import datetime
 sys.path.append('../../autogen/agwb/python/')
 from smx_tester import *
-#from directory_files import self.vd.module_dir, self.df.write_data_file, self.df.write_log_file, self.vd.module_sn_tmp, self.vd.module_sn, self.vd.feb_type_sw_A, self.vd.feb_type_sw_B
 from directory_files import DirectoryFiles
+import multiprocessing
+import time
+import os
+import traceback
+from PyQt5.QtCore import QCoreApplication
+import threading
+import ctypes
 
 class OperatingFunctions: 
     
@@ -14,6 +20,91 @@ class OperatingFunctions:
 
     log = logging.getLogger()
 
+    def run_with_timeout_and_interrupt(self, method, args=(), kwargs={}, timeout=None, check_continue=None):
+        finished = [False]
+        result = [None]
+        error = [None]
+        stop_requested = [False]
+        
+        def run_method():
+            try:
+                result[0] = method(*args, **kwargs)
+            except Exception as e:
+                error[0] = (str(e), traceback.format_exc())
+            finally:
+                finished[0] = True
+        
+        thread = threading.Thread(target=run_method)
+        thread.daemon = True
+        thread.start()
+        
+        def check_stop_thread():
+            while not finished[0] and not stop_requested[0]:
+                time.sleep(0.1)
+                
+                if check_continue and not check_continue():
+                    print(f"Stop requested by user")
+                    stop_requested[0] = True
+                    
+                    try:
+                        thread_id = thread.ident
+                        if thread_id:
+                            res = ctypes.pythonapi.PyThreadState_SetAsyncExc(
+                                ctypes.c_long(thread_id),
+                                ctypes.py_object(SystemExit)
+                            )
+                            if res > 1:
+                                ctypes.pythonapi.PyThreadState_SetAsyncExc(
+                                    ctypes.c_long(thread_id),
+                                    ctypes.c_long(0)
+                                )
+                    except Exception as e:
+                        print(f"Error interrupting thread: {str(e)}")
+                    
+                    break
+        
+        stop_thread = threading.Thread(target=check_stop_thread)
+        stop_thread.daemon = True
+        stop_thread.start()
+        
+        start_time = time.time()
+        last_progress_time = start_time
+        
+        try:
+            while thread.is_alive():
+                current_time = time.time()
+                if timeout and (current_time - start_time > timeout):
+                    print(f"Timeout after {timeout} seconds, interrupting execution")
+                    stop_requested[0] = True
+                    time.sleep(1)
+                    break
+                
+                if current_time - last_progress_time >= 5:
+                    elapsed = current_time - start_time
+                    print(f"Method still running after {elapsed:.1f} seconds...")
+                    last_progress_time = current_time
+                
+                QCoreApplication.processEvents()
+                
+                time.sleep(0.1)
+        except KeyboardInterrupt:
+            print("KeyboardInterrupt detected, attempting to stop gracefully")
+            stop_requested[0] = True
+        finally:
+            if 'stop_thread' in locals() and stop_thread.is_alive():
+                stop_thread.join(timeout=1.0)
+        
+        if finished[0]:
+            if error[0] is not None:
+                print(f"Error executing method: {error[0][0]}")
+                print(error[0][1])
+                return None
+            return result[0]
+        else:
+            print("Method execution was interrupted")
+            thread.join(timeout=2.0)
+            return None
+    
     def read_FebSN_Nside(module_sn = 'M00'):
         # Fucntion to read the FEB serial number
         feb_sn = input("--> INTRODUCE THE SERIAL NUMBER for the N-side FEB. (XXXType<A/B>NumberOfUplinks ex: 138A2): ")
@@ -81,7 +172,7 @@ class OperatingFunctions:
         return 0
 
               
-    def read_VDDM_TEMP_FEB(self, smx_l_side, pol, feb_type):
+    def read_VDDM_TEMP_FEB(self, smx_l_side, pol, feb_type, check_continue=None):
         # Function to read the VDDM and TEMP of the ASICs
         info = ""
         feb_type_sw = []
@@ -102,28 +193,69 @@ class OperatingFunctions:
         self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
         header_line  = "FEB-ID_\t\t_POLARITY_\t\t_HW-ADDR_\t_VDDM POTENTIAL [LSB] | [mV]_\t\t_TEMP [mV] | [C]_"    
         log.info(header_line)
-        self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp,header_line)
+        self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, header_line)
 
         if (feb_type[-2:-1] == "A"):
             feb_type_sw.extend(self.vd.feb_type_sw_A)
         else:
             feb_type_sw.extend(self.vd.feb_type_sw_B)
+            
+        if check_continue and not check_continue():
+            log.info("read_VDDM_TEMP_FEB aborted during initialization")
+            return -1
 
         for asic_sw in feb_type_sw:
+            if check_continue and not check_continue():
+                log.info(f"read_VDDM_TEMP_FEB aborted at asic_sw={asic_sw}")
+                return -1
+                
             for smx in smx_l_side:
+                if check_continue and not check_continue():
+                    log.info(f"read_VDDM_TEMP_FEB aborted at asic_sw={asic_sw}, smx.address={smx.address}")
+                    return -1
+                    
                 if (smx.address == asic_sw):
-                    asic_vddm = smx.read_vddm()
-                    #asic_vddm_src = smx.read_diag("Vddm")
-                    asic_temp = smx.read_temp()
-                    #asic_temp_src = smx.read_diag("Temp")
+                    if hasattr(self, 'run_with_timeout_and_interrupt'):
+                        log.info(f"Running read_vddm with timeout and interrupt for ASIC {smx.address}")
+                        asic_vddm = self.run_with_timeout_and_interrupt(
+                            smx.read_vddm,
+                            args=(),
+                            check_continue=check_continue,
+                            timeout=None
+                        )
+                        
+                        if asic_vddm is None and check_continue and not check_continue():
+                            log.info(f"read_vddm was interrupted for ASIC {smx.address}")
+                            return -1
+                        
+                        if check_continue and not check_continue():
+                            log.info(f"read_VDDM_TEMP_FEB aborted after read_vddm for ASIC {smx.address}")
+                            return -1
+                            
+                        log.info(f"Running read_temp with timeout and interrupt for ASIC {smx.address}")
+                        asic_temp = self.run_with_timeout_and_interrupt(
+                            smx.read_temp,
+                            args=(),
+                            check_continue=check_continue,
+                            timeout=None
+                        )
+                        
+                        if asic_temp is None and check_continue and not check_continue():
+                            log.info(f"read_temp was interrupted for ASIC {smx.address}")
+                            return -1
+                    else:
+                        asic_vddm = smx.read_vddm()
+                        asic_temp = smx.read_temp()
+                    
                     if pol == "N" or pol == "0":
                         self.vd.stored_vddm_values["N"].append(asic_vddm[1])
                         self.vd.stored_temp_values["N"].append(asic_temp[1])
                     else:
                         self.vd.stored_vddm_values["P"].append(asic_vddm[1])
                         self.vd.stored_temp_values["P"].append(asic_temp[1])
+                        
                     info = "{} \t\t {} \t\t {} \t\t\t {} \t {:.1f} \t\t\t {:.1f} \t {:.1f}".format(feb_type, pol_str, smx.address, asic_vddm[0], asic_vddm[1], asic_temp[0], asic_temp[1])
-                    self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp,info)
+                    self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
                     log.info(info)
                 else:
                     pass
@@ -134,7 +266,7 @@ class OperatingFunctions:
                 
         return 0
     
-    def load_STD_Config(self, smx_l_side, pol, feb_type):
+    def load_STD_Config(self, smx_l_side, pol, feb_type, check_continue=None):
         # Function to write on each ASIC the default settings
         feb_type_sw = []
         if (pol == 'N' or pol == '0'):
@@ -148,19 +280,61 @@ class OperatingFunctions:
             feb_type_sw.extend(self.vd.feb_type_sw_A)
         else:
             feb_type_sw.extend(self.vd.feb_type_sw_B)
+            
+        if check_continue and not check_continue():
+            log.info("load_STD_Config aborted during initialization")
+            return -1
 
         for asic_sw in feb_type_sw:
+            if check_continue and not check_continue():
+                log.info(f"load_STD_Config aborted at asic_sw={asic_sw}")
+                return -1
+                
             for smx in smx_l_side:
+                if check_continue and not check_continue():
+                    log.info(f"load_STD_Config aborted at asic_sw={asic_sw}, smx.address={smx.address}")
+                    return -1
+                    
                 if (smx.address == asic_sw):
                     header_line  = "--> SETTING STANDARD CONFIGURATION for ASIC with HW address {} and polarity {}".format(smx.address,pol_str)
                     log.info(header_line)
-                    smx.write_def_ana_reg(smx.address, pol_calib )
-                    smx.read_reg_all(compFlag = False)
+                    
+                    if hasattr(self, 'run_with_timeout_and_interrupt'):
+                        log.info(f"Running write_def_ana_reg with timeout and interrupt for ASIC {smx.address}")
+                        result = self.run_with_timeout_and_interrupt(
+                            smx.write_def_ana_reg,
+                            args=(smx.address, pol_calib),
+                            check_continue=check_continue,
+                            timeout=None
+                        )
+                        
+                        if result is None and check_continue and not check_continue():
+                            log.info(f"write_def_ana_reg was interrupted for ASIC {smx.address}")
+                            return -1
+                        
+                        if check_continue and not check_continue():
+                            log.info(f"load_STD_Config aborted after write_def_ana_reg for ASIC {smx.address}")
+                            return -1
+                            
+                        log.info(f"Running read_reg_all with timeout and interrupt for ASIC {smx.address}")
+                        result = self.run_with_timeout_and_interrupt(
+                            smx.read_reg_all,
+                            kwargs={"compFlag": False},
+                            check_continue=check_continue,
+                            timeout=None
+                        )
+                        
+                        if result is None and check_continue and not check_continue():
+                            log.info(f"read_reg_all was interrupted for ASIC {smx.address}")
+                            return -1
+                    else:
+                        smx.write_def_ana_reg(smx.address, pol_calib)
+                        smx.read_reg_all(compFlag = False)
                 else:
                     pass
         return 0
          
-    def set_Trim_default(self, smx_l_side, pol, feb_type, cal_asic_list):
+    def set_Trim_default(self, smx_l_side, pol, feb_type, cal_asic_list, check_continue=None):
         feb_type_sw = []
         if (pol == 'N' or pol == '0'):
             pol_str = 'N-side'
@@ -171,23 +345,46 @@ class OperatingFunctions:
             feb_type_sw.extend(self.vd.feb_type_sw_A)
         else:
             feb_type_sw.extend(self.vd.feb_type_sw_B)
+            
+        if check_continue and not check_continue():
+            log.info("set_Trim_default aborted during initialization")
+            return -1
 
         for asic_sw in feb_type_sw:
+            if check_continue and not check_continue():
+                log.info(f"set_Trim_default aborted at asic_sw={asic_sw}")
+                return -1
+                
             for smx in smx_l_side:
+                if check_continue and not check_continue():
+                    log.info(f"set_Trim_default aborted at asic_sw={asic_sw}, smx.address={smx.address}")
+                    return -1
+                    
                 if ((smx.address == asic_sw) and (smx.address in cal_asic_list)):
                     header_line  = "--> SETTING DEFAULT TRIM for ASIC with HW address {} and polarity {}".format(smx.address, pol_str)
                     log.info(header_line)
-                    smx.set_trim_default(128,36)
+                    
+                    if hasattr(self, 'run_with_timeout_and_interrupt'):
+                        log.info(f"Running set_trim_default with timeout and interrupt for ASIC {smx.address}")
+                        result = self.run_with_timeout_and_interrupt(
+                            smx.set_trim_default,
+                            args=(128, 36),
+                            check_continue=check_continue,
+                            timeout=None
+                        )
+                        
+                        if result is None and check_continue and not check_continue():
+                            log.info(f"set_trim_default was interrupted for ASIC {smx.address}")
+                            return -1
+                    else:
+                        smx.set_trim_default(128, 36)
                 else:
-                    #info = "--> NO SETTING DEFAULT TRIM for ASIC with HW ADDRESS {} in {}".format(asic_hw_addr, pol_str)
-                    #log.info(info)
                     pass
         return 0
      
-    def scan_VrefP_N_Thr2glb(self, smx_l_side, pol, feb_type, cal_asic_list, npulses = 100, test_ch = 64, amp_cal_min = 30, amp_cal_max = 247, amp_cal_fast = 30, vref_t = 118):
+    def scan_VrefP_N_Thr2glb(self, smx_l_side, pol, feb_type, cal_asic_list, npulses = 100, test_ch = 64, amp_cal_min = 30, amp_cal_max = 247, amp_cal_fast = 30, vref_t = 118, check_continue=None):
         smx_cnt = 0
         feb_type_sw = []
-        #cal_set_asic = [0 for n_asics in len(smx_l_side)[0 for vref in range(3)]]
         cal_set_asic = []
         if (pol == 'N' or pol == '0'):
             pol_str = 'N-side'
@@ -200,16 +397,42 @@ class OperatingFunctions:
             feb_type_sw.extend(self.vd.feb_type_sw_A)
         else:
             feb_type_sw.extend(self.vd.feb_type_sw_B)
+            
+        if check_continue and not check_continue():
+            log.info("scan_VrefP_N_Thr2glb aborted during initialization")
+            return -1
 
         for asic_sw in feb_type_sw:
+            if check_continue and not check_continue():
+                log.info(f"scan_VrefP_N_Thr2glb aborted at asic_sw={asic_sw}")
+                return -1
+                
             for smx in smx_l_side:
+                if check_continue and not check_continue():
+                    log.info(f"scan_VrefP_N_Thr2glb aborted at asic_sw={asic_sw}, smx.address={smx.address}")
+                    return -1
+                    
                 if ((smx.address == asic_sw) and (smx.address in cal_asic_list)):
                     header_line  = "--> SCANNING VREF_P,N & THR2_GLB for ASIC with HW address {} and polarity {}".format(smx.address, pol_str)
                     log.info(header_line)
-                    cal_set_asic.append(smx.vrefpn_scan(pol_calib, test_ch, npulses, amp_cal_min, amp_cal_max, amp_cal_fast, vref_t))
+                    
+                    if hasattr(self, 'run_with_timeout_and_interrupt'):
+                        log.info(f"Running vrefpn_scan with timeout and interrupt for ASIC {smx.address}")
+                        result = self.run_with_timeout_and_interrupt(
+                            smx.vrefpn_scan,
+                            args=(pol_calib, test_ch, npulses, amp_cal_min, amp_cal_max, amp_cal_fast, vref_t),
+                            check_continue=check_continue,
+                            timeout=None
+                        )
+                        
+                        if result is None and check_continue and not check_continue():
+                            log.info(f"vrefpn_scan was interrupted for ASIC {smx.address}")
+                            return -1
+                        
+                        cal_set_asic.append(result)
+                    else:
+                        cal_set_asic.append(smx.vrefpn_scan(pol_calib, test_ch, npulses, amp_cal_min, amp_cal_max, amp_cal_fast, vref_t))
                 else:
-                    #info = "--> NO SCANNING VREF_P/N & THR2_GLB FOR ASIC with HW ADDRESS {} in {}".format(asic_hw_addr, pol_str)
-                    #log.info(info)
                     pass
         return cal_set_asic
 
@@ -279,7 +502,7 @@ class OperatingFunctions:
                     pass
                 
     # To check calibration function
-    def calib_FEB(self, smx_l_side, trim_dir, pol, feb_type, cal_asic_list, npulses = 40, amp_cal_min = 30, amp_cal_max = 247, amp_cal_fast = 30, much_mode_on = 0):
+    def calib_FEB(self, smx_l_side, trim_dir, pol, feb_type, cal_asic_list, npulses = 40, amp_cal_min = 30, amp_cal_max = 247, amp_cal_fast = 30, much_mode_on = 0, check_continue=None):
         # Function to calibrate the ADC and FAST discriminator of each ASIC according to the given polarity
         info = ""
         feb_type_sw = []
@@ -297,15 +520,27 @@ class OperatingFunctions:
         else:
             log.error("Please check the polarity is correct: (ex: string 'N' or '0', 'P' or '1')")
         self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
-        # definition of the final trim array
+        
+        if check_continue and not check_continue():
+            log.info("calib_FEB aborted after initialization")
+            return -1
+        
         trim_final = [[0 for d in range(32)] for ch in range(128)]    
         if (feb_type[-2:-1] == "A"):
             feb_type_sw.extend(self.vd.feb_type_sw_A)
         else:
             feb_type_sw.extend(self.vd.feb_type_sw_B)
-
+        
         for asic_sw in feb_type_sw:
+            if check_continue and not check_continue():
+                log.info(f"calib_FEB aborted at asic_sw={asic_sw}")
+                return -1
+            
             for smx in smx_l_side:
+                if check_continue and not check_continue():
+                    log.info(f"calib_FEB aborted at asic_sw={asic_sw}, smx.address={smx.address}")
+                    return -1
+                
                 if ((smx.address == asic_sw) and (smx.address in cal_asic_list)):
                     asic_hw_addr = smx.address
                     # Launching the calibration with the corresponding
@@ -322,22 +557,77 @@ class OperatingFunctions:
                     filename_trim = trim_dir + filename_str
                     # Executing calibration
                     log.info("Calib file name: {}".format(filename_trim))
-                    smx.get_trim_adc_SA(pol_calib, trim_final, 40, amp_cal_min, amp_cal_max, much_mode_on)
-                    #smx.get_trim_adc(pol_calib, trim_final, 40, amp_cal_min, amp_cal_max,vref_t,  much_mode_on)
-                    smx.get_trim_fast(pol_calib, trim_final, npulses, amp_cal_fast, much_mode_on)
-                    # Writing calibration file
-                    smx.write_trim_file(filename_trim, pol_calib, trim_final, amp_cal_min, amp_cal_max, amp_cal_fast, much_mode_on)
+                    
+                    if hasattr(self, 'run_with_timeout_and_interrupt'):
+                        log.info(f"Running get_trim_adc_SA with timeout and interrupt for ASIC {asic_hw_addr}")
+                        
+                        result = self.run_with_timeout_and_interrupt(
+                            smx.get_trim_adc_SA,
+                            args=(pol_calib, trim_final, 40, amp_cal_min, amp_cal_max, much_mode_on),
+                            check_continue=check_continue,
+                            timeout=None
+                        )
+                        
+                        if result is None and check_continue and not check_continue():
+                            log.info(f"get_trim_adc_SA was interrupted for ASIC {asic_hw_addr}")
+                            return -1
+                        
+                        if check_continue and not check_continue():
+                            log.info(f"calib_FEB aborted after get_trim_adc_SA for ASIC {asic_hw_addr}")
+                            return -1
+                        
+                        log.info(f"Running get_trim_fast with timeout and interrupt for ASIC {asic_hw_addr}")
+                        result = self.run_with_timeout_and_interrupt(
+                            smx.get_trim_fast,
+                            args=(pol_calib, trim_final, npulses, amp_cal_fast, much_mode_on),
+                            check_continue=check_continue,
+                            timeout=None
+                        )
+                        
+                        if result is None and check_continue and not check_continue():
+                            log.info(f"get_trim_fast was interrupted for ASIC {asic_hw_addr}")
+                            return -1
+                        
+                        if check_continue and not check_continue():
+                            log.info(f"calib_FEB aborted after get_trim_fast for ASIC {asic_hw_addr}")
+                            return -1
+                    else:
+                        smx.get_trim_adc_SA(pol_calib, trim_final, 40, amp_cal_min, amp_cal_max, much_mode_on)
+                        
+                        if check_continue and not check_continue():
+                            log.info(f"calib_FEB aborted after get_trim_adc_SA for ASIC {asic_hw_addr}")
+                            return -1
+                        
+                        smx.get_trim_fast(pol_calib, trim_final, npulses, amp_cal_fast, much_mode_on)
+                        
+                    if check_continue and not check_continue():
+                        log.info(f"calib_FEB aborted before writing trim file for ASIC {asic_hw_addr}")
+                        return -1
+                    
+                    if hasattr(self, 'run_with_timeout_and_interrupt'):
+                        log.info(f"Running write_trim_file with timeout and interrupt for ASIC {asic_hw_addr}")
+                        result = self.run_with_timeout_and_interrupt(
+                            smx.write_trim_file,
+                            args=(filename_trim, pol_calib, trim_final, amp_cal_min, amp_cal_max, amp_cal_fast, much_mode_on),
+                            check_continue=check_continue,
+                            timeout=None
+                        )
+                        
+                        if result is None and check_continue and not check_continue():
+                            log.info(f"write_trim_file was interrupted for ASIC {asic_hw_addr}")
+                            return -1
+                    else:
+                        smx.write_trim_file(filename_trim, pol_calib, trim_final, amp_cal_min, amp_cal_max, amp_cal_fast, much_mode_on)
+                    
                     info = "CAL_ASIC_HW_ADDR_{}: {}.txt".format(asic_hw_addr,filename_str)
                     self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
                     self.df.write_log_file(self.vd.module_dir, self.vd.module_sn, info)            
                 else:
-                    #info = "SKIP_ASIC_HW_ADDR_{}".format(asic_hw_addr)
-                    #log.info(info)
-                    #self.df.write_log_file(self.vd.module_dir, self.vd.module_sn, info)
                     pass
+                    
         return 0
 
-    def set_trim_calib(self, smx_l_side, trim_dir, pol, feb_type, cal_asic_list, much_mode_on = 0):
+    def set_trim_calib(self, smx_l_side, trim_dir, pol, feb_type, cal_asic_list, much_mode_on = 0, check_continue=None):
         # Function to set the calibration values the ADC and FAST discriminator of each ASIC according to the given polarity and the ASIC ID                            
         filename_trim = trim_dir
         feb_type_sw = []
@@ -355,22 +645,64 @@ class OperatingFunctions:
             feb_type_sw.extend(self.vd.feb_type_sw_A)
         else:
             feb_type_sw.extend(self.vd.feb_type_sw_B)
+            
+        if check_continue and not check_continue():
+            log.info("set_trim_calib aborted during initialization")
+            return -1
 
         for asic_sw in feb_type_sw:
+            if check_continue and not check_continue():
+                log.info(f"set_trim_calib aborted at asic_sw={asic_sw}")
+                return -1
+                
             for smx in smx_l_side:
+                if check_continue and not check_continue():
+                    log.info(f"set_trim_calib aborted at asic_sw={asic_sw}, smx.address={smx.address}")
+                    return -1
+                    
                 if ((smx.address == asic_sw) and (smx.address in cal_asic_list)):
                     asic_hw_addr = smx.address
                     # Setting the TRIM calibration values                                                                                                                  
                     info = "--> SETTING TRIM CALIBRATION VALUES FOR ASIC with HW ADDRESS {} in {}".format(asic_hw_addr, pol_str)
                     log.info(info)
                     # Elements for the trim file
-                    asic_id_str = smx.read_efuse_str()
-                    smx.set_trim(trim_dir, pol_calib, asic_id_str)
+                    
+                    if hasattr(self, 'run_with_timeout_and_interrupt'):
+                        log.info(f"Running read_efuse_str with timeout and interrupt for ASIC {smx.address}")
+                        asic_id_str = self.run_with_timeout_and_interrupt(
+                            smx.read_efuse_str,
+                            args=(),
+                            check_continue=check_continue,
+                            timeout=None
+                        )
+                        
+                        if asic_id_str is None and check_continue and not check_continue():
+                            log.info(f"read_efuse_str was interrupted for ASIC {smx.address}")
+                            return -1
+                        
+                        if check_continue and not check_continue():
+                            log.info(f"set_trim_calib aborted after read_efuse_str for ASIC {smx.address}")
+                            return -1
+                            
+                        log.info(f"Running set_trim with timeout and interrupt for ASIC {smx.address}")
+                        result = self.run_with_timeout_and_interrupt(
+                            smx.set_trim,
+                            args=(trim_dir, pol_calib, asic_id_str),
+                            check_continue=check_continue,
+                            timeout=None
+                        )
+                        
+                        if result is None and check_continue and not check_continue():
+                            log.info(f"set_trim was interrupted for ASIC {smx.address}")
+                            return -1
+                    else:
+                        asic_id_str = smx.read_efuse_str()
+                        smx.set_trim(trim_dir, pol_calib, asic_id_str)
                 else:
                     pass
         return 0
 
-    def check_trim(self, smx_l_side, pscan_dir, pol, feb_type, cal_asic_list, disc_list = [5,10,16,24,30,31], vp_min = 0, vp_max = 255, vp_step = 1, npulses = 100):
+    def check_trim(self, smx_l_side, pscan_dir, pol, feb_type, cal_asic_list, disc_list = [5,10,16,24,30,31], vp_min = 0, vp_max = 255, vp_step = 1, npulses = 100, check_continue=None):
         # Function to measure the ADC and FAST discriminator response function for a  given number of discriminators of an ASIC                                                          
         info = ""
         feb_type_sw = []
@@ -381,6 +713,7 @@ class OperatingFunctions:
         vp_min = vp_min
         vp_max = vp_max
         vp_step = vp_step
+        
         if (pol == 'N' or pol == '0'):
             pol_str = 'elect'
             pol_calib = 0
@@ -391,7 +724,12 @@ class OperatingFunctions:
             info = 'PSCAN_FILE_P'
         else:
             log.error("Please check the polarity is correct: (ex: string 'N' or '0', 'P' or '1')")
+            
         self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
+        
+        if check_continue and not check_continue():
+            log.info("check_trim aborted after initialization")
+            return -1
 
         if (feb_type[-2:-1] == "A"):
             feb_type_sw.extend(self.vd.feb_type_sw_A)
@@ -399,15 +737,57 @@ class OperatingFunctions:
             feb_type_sw.extend(self.vd.feb_type_sw_B)
 
         for asic_sw in feb_type_sw:
+            if check_continue and not check_continue():
+                log.info(f"check_trim aborted at asic_sw={asic_sw}")
+                return -1
+            
             for smx in smx_l_side:
+                if check_continue and not check_continue():
+                    log.info(f"check_trim aborted at asic_sw={asic_sw}, smx.address={smx.address}")
+                    return -1
+                
                 asic_hw_addr = smx.address
-                if ((smx.address == asic_sw) and (smx.address in cal_asic_list)):
-                    # Checking ENC and calibration results for an ASIC                                                                                                     
+                if ((smx.address == asic_sw) and (smx.address in cal_asic_list)):                                                                                                  
                     info = "PSCAN_ASIC_HW_ADDR_{}: {}".format(asic_hw_addr, pol_str)
                     log.info(info)
-                    # Elements for the pscan file                                                                                                                          
+                                                                                                                                            
                     asic_id_str = smx.read_efuse_str()
-                    pscan_filename = smx.check_trim_red(pscan_dir, pol_calib, asic_id_str, disc_list, vp_min, vp_max, vp_step, npulses)
+                    
+                    if hasattr(self, 'run_with_timeout_and_interrupt'):
+                        log.info(f"Running check_trim_red with timeout and interrupt for ASIC {asic_hw_addr}")
+                        
+                        pscan_filename = self.run_with_timeout_and_interrupt(
+                            smx.check_trim_red,
+                            args=(
+                                pscan_dir, pol_calib, asic_id_str, 
+                                disc_list, vp_min, vp_max, vp_step, npulses
+                            ),
+                            check_continue=check_continue,
+                            timeout=None
+                        )
+                        
+                        if pscan_filename is None:
+                            if check_continue and not check_continue():
+                                log.info(f"check_trim_red was interrupted for ASIC {asic_hw_addr}")
+                                return -1
+                            else:
+                                log.error(f"check_trim_red failed for ASIC {asic_hw_addr}")
+                                continue
+                    else:
+                        log.warning("run_with_timeout_and_interrupt not available, using original method (cannot be interrupted)")
+                        try:
+                            pscan_filename = smx.check_trim_red(
+                                pscan_dir, pol_calib, asic_id_str, 
+                                disc_list, vp_min, vp_max, vp_step, npulses
+                            )
+                        except Exception as e:
+                            log.error(f"Error in check_trim_red for ASIC {asic_hw_addr}: {str(e)}")
+                            continue
+                    
+                    if check_continue and not check_continue():
+                        log.info(f"check_trim aborted after check_trim_red for ASIC {asic_hw_addr}")
+                        return -1
+                        
                     info = "PSCAN_ASIC_HW_ADDR_{}: {}".format(asic_hw_addr, pscan_filename)
                     self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
                     self.df.write_log_file(self.vd.module_dir, self.vd.module_sn, info)
@@ -419,7 +799,7 @@ class OperatingFunctions:
                     #self.df.write_log_file(self.vd.module_dir, self.vd.module_sn, info)
         return 0
 
-    def connection_check(self, smx_l_side, conn_check_dir, pol, feb_type, cal_asic_list, nloops = 5, vref_t = 108):
+    def connection_check(self, smx_l_side, conn_check_dir, pol, feb_type, cal_asic_list, nloops = 5, vref_t = 108, check_continue=None):
         # Function to check the connectivy of each channel by counting noise hits at a lower threshold
         info = ""
         feb_type_sw = []
@@ -440,24 +820,43 @@ class OperatingFunctions:
             feb_type_sw.extend(self.vd.feb_type_sw_A)
         else:
             feb_type_sw.extend(self.vd.feb_type_sw_B)
+            
+        if check_continue and not check_continue():
+            log.info("connection_check aborted during initialization")
+            return -1
 
         log.info("FEB type: {}".format(feb_type[-2:-1]))
         for asic_sw in feb_type_sw:
+            if check_continue and not check_continue():
+                log.info(f"connection_check aborted at asic_sw={asic_sw}")
+                return -1
+                
             for smx in smx_l_side:
-                #asic_hw_addr = smx.address
+                if check_continue and not check_continue():
+                    log.info(f"connection_check aborted at asic_sw={asic_sw}, smx.address={smx.address}")
+                    return -1
+                    
                 if ((smx.address == asic_sw) and (smx.address in cal_asic_list)):
                     # Checking ENC and calibration results for an ASIC     
                     info = "CONN-CHECK_ASIC_HW_ADDR_{}: {}".format(smx.address, pol_str)
                     log.info(info)
                     self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
                     self.df.write_log_file(self.vd.module_dir, self.vd.module_sn, info)
-                    # Elements for the connection check file                                                                                                                     
-                    #asic_id_str = smx.read_efuse_str()
-                    smx.connection_check(conn_check_dir, pol_calib, nloops, vref_t)
+                    
+                    if hasattr(self, 'run_with_timeout_and_interrupt'):
+                        log.info(f"Running connection_check with timeout and interrupt for ASIC {smx.address}")
+                        result = self.run_with_timeout_and_interrupt(
+                            smx.connection_check,
+                            args=(conn_check_dir, pol_calib, nloops, vref_t),
+                            check_continue=check_continue,
+                            timeout=None
+                        )
+                        
+                        if result is None and check_continue and not check_continue():
+                            log.info(f"connection_check was interrupted for ASIC {smx.address}")
+                            return -1
+                    else:
+                        smx.connection_check(conn_check_dir, pol_calib, nloops, vref_t)
                 else:
                     pass
-                #    info = "SKIP_CONN_ASIC_HW_ADDR_{}".format(asic_hw_addr)
-                #    log.info(info)
-                #    self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
-                #    self.df.write_log_file(self.vd.module_dir, self.vd.module_sn, info)
         return 0

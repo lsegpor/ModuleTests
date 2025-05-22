@@ -2,7 +2,7 @@ import sys
 sys.path.append('../autogen/agwb/python/')
 sys.path.append('../smx_tester/')
 from smx_tester import *
-from config_tests import ConfigTests as ct
+from config_tests import ConfigTests
 from file_management import FileManagement as fm
 from operating_functions import OperatingFunctions
 from power_tests import PowerTests as pt
@@ -20,6 +20,7 @@ class Main:
         self.vd = VariablesDefinition(self.df)
         self.df.vd = self.vd
         self.of = OperatingFunctions(self.vd)
+        self.ct = ConfigTests()
         self.smx_l_nside = []
         self.smx_l_pside = []
         
@@ -82,16 +83,16 @@ class Main:
                     n_length = len(self.smx_l_nside)
                     p_length = len(self.smx_l_pside)
                     
-                    valid_nside_indices = [i for i in local_cal_asic_list_nside if 0 <= i < n_length]
-                    valid_pside_indices = [i for i in local_cal_asic_list_pside if 0 <= i < p_length]
+                    valid_nside_indexes = [i for i in local_cal_asic_list_nside if 0 <= i < n_length]
+                    valid_pside_indexes = [i for i in local_cal_asic_list_pside if 0 <= i < p_length]
                     
-                    log.info(f"Tab {tab_id}: smx_l_nside length: {n_length}, valid indices: {valid_nside_indices}")
-                    log.info(f"Tab {tab_id}: smx_l_pside length: {p_length}, valid indices: {valid_pside_indices}")
+                    log.info(f"Tab {tab_id}: smx_l_nside length: {n_length}, valid indexes: {valid_nside_indexes}")
+                    log.info(f"Tab {tab_id}: smx_l_pside length: {p_length}, valid indexes: {valid_pside_indexes}")
                     
-                    selected_smx_l_nside = [self.smx_l_nside[i] for i in valid_nside_indices]
-                    selected_smx_l_pside = [self.smx_l_pside[i] for i in valid_pside_indices]
+                    selected_smx_l_nside = [self.smx_l_nside[i] for i in valid_nside_indexes]
+                    selected_smx_l_pside = [self.smx_l_pside[i] for i in valid_pside_indexes]
                     
-                    return selected_smx_l_nside, selected_smx_l_pside, valid_nside_indices, valid_pside_indices
+                    return selected_smx_l_nside, selected_smx_l_pside, valid_nside_indexes, valid_pside_indexes
             
             module_sn = 'na'
             module_str = []
@@ -240,7 +241,10 @@ class Main:
                     info = "-->> POWERING UP EMU BOARD"
                     self.df.write_log_file(self.vd.module_dir, module_sn, info)
                     # Step 1: -------------- Turning ON LV for EMU board -------------------
-                    pt.powerOn_EMU(self.vd.emu_channel)
+                    v, i = pt.reading_lv_emu(self.vd.emu_channel)
+                    
+                    if abs(v) < 0.01 and abs(i) < 0.01:
+                        pt.powerOn_EMU(self.vd.emu_channel)
                     #time.sleep(10)
                     
                     accumulated_progress += step_percentage
@@ -264,11 +268,11 @@ class Main:
                         self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
                         
                         log.info(f"Tab {tab_id}: Starting general_sync with emu={emu}, active_downlinks={active_downlinks}")
-                        smx_l = ct.general_sync(emu, active_downlinks)
+                        smx_l = self.ct.general_sync(emu, active_downlinks, check_continue=check_continue)
                         log.info(f"Tab {tab_id}: Completed general_sync, got smx_l of length {len(smx_l) if smx_l else 0}")
                         
                         # 2.1 Determining the number of ASICs per side
-                        n_asic_all = ct.scanning_asics(smx_l)
+                        n_asic_all = self.ct.scanning_asics(smx_l)
                         log.info(f"Tab {tab_id}: scanning_asics returned {n_asic_all}")
                         
                         # 2.2 Assigning the ASICs according to polarities
@@ -351,11 +355,51 @@ class Main:
                     info = ""
                     self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
                     
+                    if lv_nside_12_checked:
+                        v, i = pt.read_one_lv("N", "1.2", emu_id)
+                        
+                        if abs(v) < 0.01 and abs(i) < 0.01:
+                            log.info("Turning ON LV 1.2V for N-side")
+                            self.set_lv_on("N", "1.2", emu_id)
+                    
+                    if lv_nside_18_checked:
+                        v, i = pt.read_one_lv("N", "1.8", emu_id)
+                        
+                        if abs(v) < 0.01 and abs(i) < 0.01:
+                            log.info("Turning ON LV 1.8V for N-side")
+                            self.set_lv_on("N", "1.8", emu_id)
+                        
+                    if lv_pside_12_checked:
+                        v, i = pt.read_one_lv("P", "1.2", emu_id)
+                        
+                        if abs(v) < 0.01 and abs(i) < 0.01:
+                            log.info("Turning ON LV 1.2V for P-side")
+                            self.set_lv_on("P", "1.2", emu_id)
+                        
+                    if lv_pside_18_checked:
+                        v, i = pt.read_one_lv("P", "1.8", emu_id)
+                        
+                        if abs(v) < 0.01 and abs(i) < 0.01:
+                            log.info("Turning ON LV 1.8V for P-side")
+                            self.set_lv_on("P", "1.8", emu_id)
+                    
+                    if lv_nside_12_checked or lv_nside_18_checked or lv_pside_12_checked or lv_pside_18_checked:
+                        log.info("Waiting for voltages to stabilize...")
+                        wait_time = 5
+                        time.sleep(wait_time)
+                        log.info(f"Waited {wait_time} seconds for voltage stabilization")
+                    
                     if lv_nside_12_checked or lv_nside_18_checked:
                         info = "LV_BEF_CONFIG_N"
                         self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
                         lv_nside_bc = pt.reading_lv('N', self.vd.emu_channel, read_12v=lv_nside_12_checked, read_18v=lv_nside_18_checked)
-                        update_feb_nside(lv_nside_bc[0], lv_nside_bc[1], lv_nside_bc[2], lv_nside_bc[3])
+                        
+                        v12_val = lv_nside_bc[0] if lv_nside_12_checked else -1.0
+                        i12_val = lv_nside_bc[1] if lv_nside_12_checked else -1.0
+                        v18_val = lv_nside_bc[2] if lv_nside_18_checked else -1.0
+                        i18_val = lv_nside_bc[3] if lv_nside_18_checked else -1.0
+                        
+                        update_feb_nside(v12_val, i12_val, v18_val, i18_val)
                         
                         if lv_nside_12_checked:
                             info = "FEB N-side:\t{}\tLV_1.2_BC_N [V]:\t{}\tI_1.2_BC_N [A]:\t{}".format(feb_nside, lv_nside_bc[0], lv_nside_bc[1])
@@ -366,13 +410,19 @@ class Main:
                             self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
                     
                     else:
-                        update_feb_nside(0.0, 0.0, 0.0, 0.0)
+                        update_feb_nside(-1.0, -1.0, -1.0, -1.0)
                         
                     if lv_pside_12_checked or lv_pside_18_checked:
                         info = "LV_BEF_CONFIG_P"
                         self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
                         lv_pside_bc = pt.reading_lv('P', self.vd.emu_channel, read_12v=lv_pside_12_checked, read_18v=lv_pside_18_checked)
-                        update_feb_pside(lv_pside_bc[0], lv_pside_bc[1], lv_pside_bc[2], lv_pside_bc[3])
+                        
+                        v12_val = lv_pside_bc[0] if lv_pside_12_checked else -1.0
+                        i12_val = lv_pside_bc[1] if lv_pside_12_checked else -1.0
+                        v18_val = lv_pside_bc[2] if lv_pside_18_checked else -1.0
+                        i18_val = lv_pside_bc[3] if lv_pside_18_checked else -1.0
+                        
+                        update_feb_pside(v12_val, i12_val, v18_val, i18_val)
                         
                         if lv_pside_12_checked:
                             info = "FEB P-side:\t{}\tLV_1.2_BC_P [V]:\t{}\tI_1.2_BC_P [A]:\t{}".format(feb_pside, lv_pside_bc[0], lv_pside_bc[1])
@@ -383,7 +433,7 @@ class Main:
                             self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
                     
                     else:
-                        update_feb_pside(0.0, 0.0, 0.0, 0.0)
+                        update_feb_pside(-1.0, -1.0, -1.0, -1.0)
                     
                     info = "<<-- FINISHED READING LV VALUES BEFORE CONFIGURATION"
                     self.df.write_log_file(self.vd.module_dir, module_sn, info)
@@ -475,22 +525,29 @@ class Main:
                     # Function
                     # Setp 5: --------------- Setting the standard ASIC configuration ---------
                     try:
-                        selected_smx_l_nside, selected_smx_l_pside, valid_nside_indices, valid_pside_indices = get_valid_selections()
-                        
-                        if selected_smx_l_nside:
-                            self.of.load_STD_Config(selected_smx_l_nside, 'N', feb_nside)
-                        else:
-                            log.warning(f"Tab {tab_id}: No valid N-side SMX elements to configure")
+                        with self._smx_lock:
+                            all_smx_l_nside = self.smx_l_nside.copy()
+                            all_smx_l_pside = self.smx_l_pside.copy()
                             
-                        if selected_smx_l_pside:
-                            self.of.load_STD_Config(selected_smx_l_pside, 'P', feb_pside)
+                            log.info(f"Tab {tab_id}: Configuring ALL ASICs - N-side: {len(all_smx_l_nside)}, P-side: {len(all_smx_l_pside)}")
+                        
+                        if all_smx_l_nside:
+                            log.info(f"Tab {tab_id}: Loading standard configuration for ALL {len(all_smx_l_nside)} N-side ASICs")
+                            self.of.load_STD_Config(all_smx_l_nside, 'N', feb_nside, check_continue=check_continue)
                         else:
-                            log.warning(f"Tab {tab_id}: No valid P-side SMX elements to configure")
+                            log.warning(f"Tab {tab_id}: No N-side SMX elements available")
+                            
+                        if all_smx_l_pside:
+                            log.info(f"Tab {tab_id}: Loading standard configuration for ALL {len(all_smx_l_pside)} P-side ASICs")
+                            self.of.load_STD_Config(all_smx_l_pside, 'P', feb_pside, check_continue=check_continue)
+                        else:
+                            log.warning(f"Tab {tab_id}: No P-side SMX elements available")
                             
                         info = "<<-- FINISHED LOADING STANDARD CONFIGURATION"
                         self.df.write_log_file(self.vd.module_dir, module_sn, info)
                     except Exception as e:
                         log.error(f"Tab {tab_id}: Error in std_config: {str(e)}")
+                        log.error(f"Exception details: {traceback.format_exc()}")
                     
                     accumulated_progress += step_percentage
                     update_progress(accumulated_progress)
@@ -506,7 +563,7 @@ class Main:
                     # Function
                     # Step 8: ----------------------- Reading ASIC ID -------------------------
                     try:
-                        selected_smx_l_nside, selected_smx_l_pside, valid_nside_indices, valid_pside_indices = get_valid_selections()
+                        selected_smx_l_nside, selected_smx_l_pside, valid_nside_indexes, valid_pside_indexes = get_valid_selections()
                         
                         if selected_smx_l_nside:
                             self.of.read_asicIDs_FEB(selected_smx_l_nside, 'N', feb_nside)
@@ -537,15 +594,15 @@ class Main:
                     #Function
                     # Step 6: --------------- Loading the default trim on the ASICs -----------
                     try:
-                        selected_smx_l_nside, selected_smx_l_pside, valid_nside_indices, valid_pside_indices = get_valid_selections()
+                        selected_smx_l_nside, selected_smx_l_pside, valid_nside_indexes, valid_pside_indexes = get_valid_selections()
                         
                         if selected_smx_l_nside:
-                            self.of.set_Trim_default(selected_smx_l_nside, 'N', feb_nside, valid_nside_indices)
+                            self.of.set_Trim_default(selected_smx_l_nside, 'N', feb_nside, valid_nside_indexes, check_continue=check_continue)
                         else:
                             log.warning(f"Tab {tab_id}: No valid N-side SMX elements for set_Trim_default")
                             
                         if selected_smx_l_pside:
-                            self.of.set_Trim_default(selected_smx_l_pside, 'P', feb_pside, valid_pside_indices)
+                            self.of.set_Trim_default(selected_smx_l_pside, 'P', feb_pside, valid_pside_indexes, check_continue=check_continue)
                         else:
                             log.warning(f"Tab {tab_id}: No valid P-side SMX elements for set_Trim_default")
                             
@@ -568,15 +625,15 @@ class Main:
                     # Function
                     # Step 9: -------------------- Reading VVDM & TEMP ------------------------
                     try:
-                        selected_smx_l_nside, selected_smx_l_pside, valid_nside_indices, valid_pside_indices = get_valid_selections()
+                        selected_smx_l_nside, selected_smx_l_pside, valid_nside_indexes, valid_pside_indexes = get_valid_selections()
                         
                         if selected_smx_l_nside:
-                            self.of.read_VDDM_TEMP_FEB(selected_smx_l_nside, "N", feb_nside)
+                            self.of.read_VDDM_TEMP_FEB(selected_smx_l_nside, "N", feb_nside, check_continue=check_continue)
                         else:
                             log.warning(f"Tab {tab_id}: No valid N-side SMX elements for check_vddm_temp")
                             
                         if selected_smx_l_pside:
-                            self.of.read_VDDM_TEMP_FEB(selected_smx_l_pside, "P", feb_pside)
+                            self.of.read_VDDM_TEMP_FEB(selected_smx_l_pside, "P", feb_pside, check_continue=check_continue)
                         else:
                             log.warning(f"Tab {tab_id}: No valid P-side SMX elements for check_vddm_temp")
                         
@@ -617,25 +674,27 @@ class Main:
                     # 10.1 Scanning ADC and FAST discriminator potentials beforte calibration
                     # define default cal settings just in case
                     try:
-                        selected_smx_l_nside, selected_smx_l_pside, valid_nside_indices, valid_pside_indices = get_valid_selections()
+                        selected_smx_l_nside, selected_smx_l_pside, valid_nside_indexes, valid_pside_indexes = get_valid_selections()
                         
                         cal_set_nside = None
                         cal_set_pside = None
                         
                         if selected_smx_l_nside:
                             cal_set_nside = self.of.scan_VrefP_N_Thr2glb(
-                                selected_smx_l_nside, 'N', feb_nside, valid_nside_indices, 
+                                selected_smx_l_nside, 'N', feb_nside, valid_nside_indexes, 
                                 self.vd.npulses, self.vd.test_ch, self.vd.amp_cal_min, 
-                                self.vd.amp_cal_max, self.vd.amp_cal_fast, self.vd.vref_t
+                                self.vd.amp_cal_max, self.vd.amp_cal_fast, self.vd.vref_t,
+                                check_continue=check_continue
                             )
                         else:
                             log.warning(f"Tab {tab_id}: No valid N-side SMX elements for get_vrefs")
                             
                         if selected_smx_l_pside:
                             cal_set_pside = self.of.scan_VrefP_N_Thr2glb(
-                                selected_smx_l_pside, 'P', feb_pside, valid_pside_indices, 
+                                selected_smx_l_pside, 'P', feb_pside, valid_pside_indexes, 
                                 self.vd.npulses, self.vd.test_ch, self.vd.amp_cal_min, 
-                                self.vd.amp_cal_max, self.vd.amp_cal_fast, self.vd.vref_t
+                                self.vd.amp_cal_max, self.vd.amp_cal_fast, self.vd.vref_t,
+                                check_continue=check_continue
                             )
                         else:
                             log.warning(f"Tab {tab_id}: No valid P-side SMX elements for get_vrefs")
@@ -667,18 +726,18 @@ class Main:
                             log.warning(f"Tab {tab_id}: Missing cal_set_pside for set_calib_par")
                             cal_set_pside = []
                         
-                        self.of.print_cal_settings('N', cal_set_nside, valid_nside_indices)
-                        self.of.print_cal_settings('P', cal_set_pside, valid_pside_indices)
+                        self.of.print_cal_settings('N', cal_set_nside, valid_nside_indexes)
+                        self.of.print_cal_settings('P', cal_set_pside, valid_pside_indexes)
                         
-                        selected_smx_l_nside, selected_smx_l_pside, valid_nside_indices, valid_pside_indices = get_valid_selections()
+                        selected_smx_l_nside, selected_smx_l_pside, valid_nside_indexes, valid_pside_indexes = get_valid_selections()
                         
                         if selected_smx_l_nside and cal_set_nside:
-                            self.of.writing_cal_settings(selected_smx_l_nside, 'N', feb_nside, cal_set_nside, valid_nside_indices)
+                            self.of.writing_cal_settings(selected_smx_l_nside, 'N', feb_nside, cal_set_nside, valid_nside_indexes)
                         else:
                             log.warning(f"Tab {tab_id}: No valid N-side elements for set_calib_par")
                         
                         if selected_smx_l_pside and cal_set_pside:
-                            self.of.writing_cal_settings(selected_smx_l_pside, 'P', feb_pside, cal_set_pside, valid_pside_indices)
+                            self.of.writing_cal_settings(selected_smx_l_pside, 'P', feb_pside, cal_set_pside, valid_pside_indexes)
                         else:
                             log.warning(f"Tab {tab_id}: No valid P-side elements for set_calib_par")
                         
@@ -701,22 +760,26 @@ class Main:
                     # Function
                     # Step 11: ------------------ Calibrating the Module ---------------------
                     try:
-                        selected_smx_l_nside, selected_smx_l_pside, valid_nside_indices, valid_pside_indices = get_valid_selections()
+                        selected_smx_l_nside, selected_smx_l_pside, valid_nside_indexes, valid_pside_indexes = get_valid_selections()
                         
                         if selected_smx_l_nside:
                             self.of.calib_FEB(
-                                selected_smx_l_nside, trim_dir, 'N', feb_nside, valid_nside_indices, 
+                                selected_smx_l_nside, trim_dir, 'N', feb_nside, valid_nside_indexes, 
                                 self.vd.npulses, self.vd.amp_cal_min, self.vd.amp_cal_max, 
-                                self.vd.amp_cal_fast, much_mode_on=0
+                                self.vd.amp_cal_fast, much_mode_on=0, check_continue=check_continue
                             )
                         else:
                             log.warning(f"Tab {tab_id}: No valid N-side SMX elements for get_trim")
                         
+                        if not check_continue():
+                            update_test_label("*** TEST EXECUTION STOPPED ***")
+                            return
+                        
                         if selected_smx_l_pside:
                             self.of.calib_FEB(
-                                selected_smx_l_pside, trim_dir, 'P', feb_pside, valid_pside_indices, 
+                                selected_smx_l_pside, trim_dir, 'P', feb_pside, valid_pside_indexes, 
                                 self.vd.npulses, self.vd.amp_cal_min, self.vd.amp_cal_max, 
-                                self.vd.amp_cal_fast, much_mode_on=0
+                                self.vd.amp_cal_fast, much_mode_on=0, check_continue=check_continue  # Añadir check_continue
                             )
                         else:
                             log.warning(f"Tab {tab_id}: No valid P-side SMX elements for get_trim")
@@ -740,12 +803,12 @@ class Main:
                     # Function
                     # Step 12: ----------------- Setting Calibration Trim --------------------
                     try:
-                        selected_smx_l_nside, selected_smx_l_pside, valid_nside_indices, valid_pside_indices = get_valid_selections()
+                        selected_smx_l_nside, selected_smx_l_pside, valid_nside_indexes, valid_pside_indexes = get_valid_selections()
                         
                         if selected_smx_l_nside:
                             self.of.set_trim_calib(
                                 selected_smx_l_nside, trim_dir, 'N', feb_nside, 
-                                valid_nside_indices, much_mode_on=0
+                                valid_nside_indexes, much_mode_on=0, check_continue=check_continue
                             )
                         else:
                             log.warning(f"Tab {tab_id}: No valid N-side SMX elements for set_trim_calib")
@@ -753,7 +816,7 @@ class Main:
                         if selected_smx_l_pside:
                             self.of.set_trim_calib(
                                 selected_smx_l_pside, trim_dir, 'P', feb_pside, 
-                                valid_pside_indices, much_mode_on=0
+                                valid_pside_indexes, much_mode_on=0, check_continue=check_continue
                             )
                         else:
                             log.warning(f"Tab {tab_id}: No valid P-side SMX elements for set_trim_calib")
@@ -777,22 +840,22 @@ class Main:
                     # Function
                     # Step 12: ------------------- ENC & Checking Trim ----------------------- 
                     try:
-                        selected_smx_l_nside, selected_smx_l_pside, valid_nside_indices, valid_pside_indices = get_valid_selections()
+                        selected_smx_l_nside, selected_smx_l_pside, valid_nside_indexes, valid_pside_indexes = get_valid_selections()
                         
                         if selected_smx_l_nside:
                             self.of.check_trim(
-                                selected_smx_l_nside, pscan_dir, 'N', feb_nside, valid_nside_indices, 
+                                selected_smx_l_nside, pscan_dir, 'N', feb_nside, valid_nside_indexes, 
                                 self.vd.disc_list, self.vd.vp_min, self.vd.vp_max, 
-                                self.vd.vp_step, self.vd.npulses
+                                self.vd.vp_step, self.vd.npulses, check_continue=check_continue
                             )
                         else:
                             log.warning(f"Tab {tab_id}: No valid N-side SMX elements for check_trim")
                         
                         if selected_smx_l_pside:
                             self.of.check_trim(
-                                selected_smx_l_pside, pscan_dir, 'P', feb_pside, valid_pside_indices, 
+                                selected_smx_l_pside, pscan_dir, 'P', feb_pside, valid_pside_indexes, 
                                 self.vd.disc_list, self.vd.vp_min, self.vd.vp_max, 
-                                self.vd.vp_step, self.vd.npulses
+                                self.vd.vp_step, self.vd.npulses, check_continue=check_continue
                             )
                         else:
                             log.warning(f"Tab {tab_id}: No valid P-side SMX elements for check_trim")
@@ -839,12 +902,12 @@ class Main:
                     self.df.write_log_file(self.vd.module_dir, module_sn, info)
                     # Function
                     try:
-                        selected_smx_l_nside, selected_smx_l_pside, valid_nside_indices, valid_pside_indices = get_valid_selections()
+                        selected_smx_l_nside, selected_smx_l_pside, valid_nside_indexes, valid_pside_indexes = get_valid_selections()
                         
                         if selected_smx_l_nside:
                             self.of.connection_check(
                                 selected_smx_l_nside, conn_check_dir, 'N', feb_nside, 
-                                valid_nside_indices, nloops, self.vd.vref_t_low
+                                valid_nside_indexes, nloops, self.vd.vref_t_low, check_continue=check_continue
                             )
                         else:
                             log.warning(f"Tab {tab_id}: No valid N-side SMX elements for conn_check")
@@ -852,7 +915,7 @@ class Main:
                         if selected_smx_l_pside:
                             self.of.connection_check(
                                 selected_smx_l_pside, conn_check_dir, 'P', feb_pside, 
-                                valid_pside_indices, nloops, self.vd.vref_t_low
+                                valid_pside_indexes, nloops, self.vd.vref_t_low, check_continue=check_continue
                             )
                         else:
                             log.warning(f"Tab {tab_id}: No valid P-side SMX elements for conn_check")
@@ -884,11 +947,11 @@ class Main:
                             n_length = len(self.smx_l_nside)
                             p_length = len(self.smx_l_pside)
                             
-                            valid_nside_indices = [i for i in long_run_cal_asic_list_nside if 0 <= i < n_length]
-                            valid_pside_indices = [i for i in long_run_cal_asic_list_pside if 0 <= i < p_length]
+                            valid_nside_indexes = [i for i in long_run_cal_asic_list_nside if 0 <= i < n_length]
+                            valid_pside_indexes = [i for i in long_run_cal_asic_list_pside if 0 <= i < p_length]
                             
-                            selected_smx_l_nside = [self.smx_l_nside[i] for i in valid_nside_indices]
-                            selected_smx_l_pside = [self.smx_l_pside[i] for i in valid_pside_indices]
+                            selected_smx_l_nside = [self.smx_l_nside[i] for i in valid_nside_indexes]
+                            selected_smx_l_pside = [self.smx_l_pside[i] for i in valid_pside_indexes]
                         
                         for n in range(0, nloops_local):
                             if not check_continue():
@@ -967,7 +1030,22 @@ class Main:
     def set_lv_on(self, side_type, volt_type, emu_channel):
         log.info("-------------- SETTING LV ON ------------------------- ")
         info = "--> SETTING ON LV N"
+        log.info(info)
+        
         result = pt.powerOn_lv(side_type, volt_type, emu_channel)
                     
         info = f"<<-- {side_type}-side {volt_type}V LV ON result: {result}"
         log.info(info)
+        
+    def set_read_lv_on(self, side_type, volt_type, emu_channel):
+        log.info("-------------- SETTING LV ON ------------------------- ")
+        info = "--> SETTING ON LV N"
+        log.info(info)
+        
+        pt.powerOn_lv(side_type, volt_type, emu_channel)
+        
+        time.sleep(5)
+        
+        lv_values = pt.read_one_lv(side_type, volt_type, emu_channel)
+        
+        return lv_values

@@ -98,6 +98,56 @@ class PowerTests:
             
         return (lv_12, i_12, lv_18, i_18)
     
+    def read_one_lv(pol_usr, volt_type, emu_channel):
+        febs_channels = []
+        
+        if emu_channel == "EMU_238":
+            febs_channels = ["u400", "u401", "u402", "u403"]
+        elif emu_channel == "EMU_213":
+            febs_channels = ["u404", "u405", "u406", "u407"]
+        elif emu_channel == "EMU_234":
+            febs_channels = ["u500", "u501", "u502", "u503"]
+        else:
+            febs_channels = ["u204", "u205", "u206", "u207"]
+
+        channel_idx = -1
+        if pol_usr == 'N' or pol_usr == '0':
+            if volt_type == '1.2':
+                channel_idx = 0
+                print(f"Reading LV 1.2V for N-side using channel {febs_channels[channel_idx]}")
+            elif volt_type == '1.8':
+                channel_idx = 1
+                print(f"Reading LV 1.8V for N-side using channel {febs_channels[channel_idx]}")
+        elif pol_usr == 'P' or pol_usr == '1':
+            if volt_type == '1.2':
+                channel_idx = 2
+                print(f"Reading LV 1.2V for P-side using channel {febs_channels[channel_idx]}")
+            elif volt_type == '1.8':
+                channel_idx = 3
+                print(f"Reading LV 1.8V for P-side using channel {febs_channels[channel_idx]}")
+        else:
+            log.error("Please, indicate a polarity for setting ON the corresponding LV potentials, in the following way:")
+            log.error("N or 0 for n-side, 0 for electrons polarity")
+            log.error("P or 1 for p-side, 1 for holes polarity")
+            return None
+        
+        if channel_idx == -1:
+            log.error(f"Invalid voltage type: {volt_type}. Must be '1.2' or '1.8'")
+            return None
+        
+        cmd = f"./../../../lv/mpod_hhlab_2024/lab24_mpod02_{febs_channels[channel_idx]} voltage"
+        output = subprocess.check_output(cmd, shell=True, text=True)
+        values = re.findall(r'[0-9]+[.][0-9]+', output)
+        if len(values) == 2:
+            lv = round(float(values[0]), 2)
+            i = round(float(values[1]), 2)
+        
+        # Print results
+        print("LV values: ")
+        print("LV [V]: " + str(lv) + " I [A]: " + str(i))
+            
+        return (lv, i)
+    
     def powerOff_lv(pol_usr, volt_type, emu_channel):
         febs_channels = []
         
@@ -244,11 +294,11 @@ class PowerTests:
         values = re.findall(r'[0-9]+[.][0-9]+', output)
         
         if len(values) == 2:
-            lv_emu = values[0]
-            i_emu = values[1]
+            lv_emu = round(float(values[0]), 6)
+            i_emu = round(float(values[1]), 6)
         else: 
-            lv_emu = "N/A"
-            i_emu = "N/A"
+            lv_emu = 0.000000
+            i_emu = 0.000000
 
         print("EMU values: ", values)
         print("LV_EMU [V]: " + str(lv_emu) + " I_EMU [A]: " +str(i_emu))

@@ -831,14 +831,44 @@ class TabInterface(QWidget):
         
         try:
             if hasattr(self, 'main') and self.main:
-                self.main.set_lv_on(side_type, volt_type, emu_channel)
                 self.update_test_label(f"--> Turning on LV for {side_type}-Side {volt_type}V (EMU: {emu_channel})")
-                QMessageBox.information(self, "LV OFF", 
+                
+                lv_values = self.main.set_read_lv_on(side_type, volt_type, emu_channel)
+                
+                if lv_values is not None:
+                    if side_type == 'N':
+                        if volt_type == '1.2':
+                            self.nside_entries[0].setText(f"{lv_values[0]:.2f}")
+                            self.nside_entries[1].setText(f"{lv_values[1]:.2f}")
+                            success = lv_values[0] > 0
+                        else:
+                            self.nside_entries[2].setText(f"{lv_values[0]:.2f}")
+                            self.nside_entries[3].setText(f"{lv_values[1]:.2f}")
+                            success = lv_values[0] > 0
+                    else:
+                        if volt_type == '1.2':
+                            self.pside_entries[0].setText(f"{lv_values[0]:.2f}")
+                            self.pside_entries[1].setText(f"{lv_values[1]:.2f}")
+                            success = lv_values[0] > 0
+                        else:
+                            self.pside_entries[2].setText(f"{lv_values[0]:.2f}")
+                            self.pside_entries[3].setText(f"{lv_values[1]:.2f}")
+                            success = lv_values[0] > 0
+                    
+                    if success:
+                        QMessageBox.information(self, "LV ON", 
                                     f"LV turned on correctly for {side_type}-Side {volt_type}V (EMU: {emu_channel})")
+                    else:
+                        QMessageBox.warning(self, "LV ON", 
+                                    f"LV may not have turned on correctly for {side_type}-Side {volt_type}V (EMU: {emu_channel}). Please check readings.")
+                else:
+                    QMessageBox.warning(self, "Error", "Failed to read LV values after turning on.")
             else:
-                QMessageBox.warning(self, "Error", "Principal logic not avaliable.")
+                QMessageBox.warning(self, "Error", "Principal logic not available.")
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Error turning on LV: {str(e)}")
+            import traceback
+            traceback.print_exc()
         
     def save_figure(self):
         if not hasattr(self, 'active_canvas') or not self.active_canvas:
@@ -902,16 +932,24 @@ class TabInterface(QWidget):
         self.save_figure()
         
     def update_feb_nside(self, v12_value, i12_value, v18_value, i18_value):
-        self.nside_entries[0].setText(str(v12_value) + "V")
-        self.nside_entries[1].setText(str(i12_value) + "A")
-        self.nside_entries[2].setText(str(v18_value) + "V")
-        self.nside_entries[3].setText(str(i18_value) + "A")
+        if v12_value != -1.0:
+            self.nside_entries[0].setText(str(v12_value) + "V")
+        if i12_value != -1.0:
+            self.nside_entries[1].setText(str(i12_value) + "A")
+        if v18_value != -1.0:
+            self.nside_entries[2].setText(str(v18_value) + "V")
+        if i18_value != -1.0:
+            self.nside_entries[3].setText(str(i18_value) + "A")
         
     def update_feb_pside(self, v12_value, i12_value, v18_value, i18_value):
-        self.pside_entries[0].setText(str(v12_value) + "V")
-        self.pside_entries[1].setText(str(i12_value) + "A")
-        self.pside_entries[2].setText(str(v18_value) + "V")
-        self.pside_entries[3].setText(str(i18_value) + "A")
+        if v12_value != -1.0:
+            self.pside_entries[0].setText(str(v12_value) + "V")
+        if i12_value != -1.0:
+            self.pside_entries[1].setText(str(i12_value) + "A")
+        if v18_value != -1.0:
+            self.pside_entries[2].setText(str(v18_value) + "V")
+        if i18_value != -1.0:
+            self.pside_entries[3].setText(str(i18_value) + "A")
         
     def update_checkbox_feb(self):
         if self.check_lv_nside_12.isChecked():
@@ -1133,8 +1171,8 @@ class TabInterface(QWidget):
         self.info_label.setText(text)
         
     def update_emu_values(self, v_value, i_value):
-        self.emu_v_entry.setText(v_value)
-        self.emu_i_entry.setText(i_value)
+        self.emu_v_entry.setText(str(v_value))
+        self.emu_i_entry.setText(str(i_value))
         
     def update_calib_path(self, text):
         self.entry_calibration.setText(text)
