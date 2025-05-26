@@ -382,7 +382,7 @@ class OperatingFunctions:
                     pass
         return 0
      
-    def scan_VrefP_N_Thr2glb(self, smx_l_side, pol, feb_type, cal_asic_list, npulses = 100, test_ch = 64, amp_cal_min = 30, amp_cal_max = 247, amp_cal_fast = 30, vref_t = 118, check_continue=None):
+    def scan_VrefP_N_Thr2glb(self, smx_l_side, pol, feb_type, cal_asic_list, npulses = 100, test_ch = 64, amp_cal_min = 30, amp_cal_max = 247, amp_cal_fast = 30, vref_t = 118, check_continue=None, progress_callback=None, base_progress=0):
         smx_cnt = 0
         feb_type_sw = []
         cal_set_asic = []
@@ -401,6 +401,14 @@ class OperatingFunctions:
         if check_continue and not check_continue():
             log.info("scan_VrefP_N_Thr2glb aborted during initialization")
             return -1
+        
+        total_iterations = 0
+        for asic_sw in feb_type_sw:
+            for smx in smx_l_side:
+                if ((smx.address == asic_sw) and (smx.address in cal_asic_list)):
+                    total_iterations += 1
+        
+        current_iteration = 0
 
         for asic_sw in feb_type_sw:
             if check_continue and not check_continue():
@@ -415,6 +423,9 @@ class OperatingFunctions:
                 if ((smx.address == asic_sw) and (smx.address in cal_asic_list)):
                     header_line  = "--> SCANNING VREF_P,N & THR2_GLB for ASIC with HW address {} and polarity {}".format(smx.address, pol_str)
                     log.info(header_line)
+                    
+                    if progress_callback:
+                        progress_callback(base_progress, current_iteration, total_iterations)
                     
                     if hasattr(self, 'run_with_timeout_and_interrupt'):
                         log.info(f"Running vrefpn_scan with timeout and interrupt for ASIC {smx.address}")
@@ -432,6 +443,11 @@ class OperatingFunctions:
                         cal_set_asic.append(result)
                     else:
                         cal_set_asic.append(smx.vrefpn_scan(pol_calib, test_ch, npulses, amp_cal_min, amp_cal_max, amp_cal_fast, vref_t))
+                        
+                    current_iteration += 1
+                
+                    if progress_callback:
+                        progress_callback(base_progress, current_iteration, total_iterations)
                 else:
                     pass
         return cal_set_asic
