@@ -132,6 +132,58 @@ class OperatingFunctions:
         else:
             log.error("FEB ID must contain the FEB type (A/B) in the second-to-last position")
             return 'na'
+        
+    def validate_efuse_uniqueness(self, efuse_str_registry, efuse_int_registry, pol_str, feb_type):
+        duplicates_found = False
+        duplicate_str_details = []
+        duplicate_int_details = []
+        
+        for efuse_str, asic_list in efuse_str_registry.items():
+            if len(asic_list) > 1:
+                duplicates_found = True
+                hw_addrs = [str(asic['hw_addr']) for asic in asic_list]
+                duplicate_str_details.append({
+                    'efuse_id': efuse_str,
+                    'count': len(asic_list),
+                    'hw_addresses': hw_addrs,
+                    'asics': asic_list
+                })
+                
+                log.warning(f"DUPLICATE EFUSE STRING ID DETECTED: {efuse_str}")
+                log.warning(f"  Found on {len(asic_list)} ASICs: HW addresses {hw_addrs}")
+                for asic in asic_list:
+                    log.warning(f"    - {asic['feb_type']} {asic['polarity']} HW:{asic['hw_addr']}")
+        
+        for efuse_int, asic_list in efuse_int_registry.items():
+            if len(asic_list) > 1:
+                duplicates_found = True
+                hw_addrs = [str(asic['hw_addr']) for asic in asic_list]
+                duplicate_int_details.append({
+                    'efuse_id': efuse_int,
+                    'count': len(asic_list),
+                    'hw_addresses': hw_addrs,
+                    'asics': asic_list
+                })
+                
+                log.warning(f"DUPLICATE EFUSE INTEGER ID DETECTED: {efuse_int}")
+                log.warning(f"  Found on {len(asic_list)} ASICs: HW addresses {hw_addrs}")
+                for asic in asic_list:
+                    log.warning(f"    - {asic['feb_type']} {asic['polarity']} HW:{asic['hw_addr']}")
+        
+        if duplicates_found:
+            self.write_duplicate_summary_to_file(
+                duplicate_str_details, duplicate_int_details, pol_str
+            )
+            
+            return "DUPLICATES_FOUND", duplicate_str_details, duplicate_int_details, pol_str, feb_type
+        else:
+            total_asics = len(efuse_str_registry)
+            log.info(f"EFUSE ID VALIDATION PASSED: All {total_asics} ASICs on {pol_str} have unique IDs")
+            
+            info = f"EFUSE_VALIDATION_{pol_str.upper()}: PASSED - {total_asics} unique ASIC IDs confirmed"
+            self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
+            
+            return "VALIDATION_PASSED"
      
     def read_asicIDs_FEB(self, smx_l_side, pol, feb_type):
         # Function to read the overall ASIC ID (FEB where ASIC belongs, polarity, HW address, ASIC e-fuse ID(string) and (int)) 
@@ -156,22 +208,74 @@ class OperatingFunctions:
         else:
             feb_type_sw.extend(self.vd.feb_type_sw_B)
 
-        #smx_counter =0
-
+        asic_info_list = []
+        efuse_str_registry = {}
+        efuse_int_registry = {}
+        
         for asic_sw in feb_type_sw:
             for smx in smx_l_side:
                 if (smx.address == asic_sw):
                     addr = smx.address
-                    asic_id_int = smx.read_efuse()
-                    asic_id_str = smx.read_efuse_str()
-                    info  = "{} \t\t {} \t\t {} \t\t {} \t\t {}".format(feb_type, pol_str, addr, asic_id_str, asic_id_int)
-                    self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
-                    log.info(info)
-                else:
-                    pass
-        return 0
+                    
+                    try:
+                        asic_id_int = smx.read_efuse()
+                        asic_id_str = smx.read_efuse_str()
+                        
+                        asic_info = {
+                            'feb_type': feb_type,
+                            'polarity': pol_str,
+                            'hw_addr': addr,
+                            'efuse_str': asic_id_str,
+                            'efuse_int': asic_id_int,
+                            'smx_obj': smx
+                        }
+                        asic_info_list.append(asic_info)
+                        
+                        if asic_id_str in efuse_str_registry:
+                            efuse_str_registry[asic_id_str].append(asic_info)
+                        else:
+                            efuse_str_registry[asic_id_str] = [asic_info]
+                        
+                        if asic_id_int in efuse_int_registry:
+                            efuse_int_registry[asic_id_int].append(asic_info)
+                        else:
+                            efuse_int_registry[asic_id_int] = [asic_info]
+                        
+                        info = "{} \t\t {} \t\t {} \t\t {} \t\t {}".format(
+                            feb_type, pol_str, addr, asic_id_str, asic_id_int)
+                        self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
+                        log.info(info)
+                        
+                    except Exception as e:
+                        log.error(f"Error reading EFUSE for ASIC {addr}: {str(e)}")
+                        continue
+        
+        validation_result = self.validate_efuse_uniqueness(
+            efuse_str_registry, efuse_int_registry, pol_str, feb_type
+        )
+        
+        return validation_result
+    
+    def write_duplicate_summary_to_file(self, duplicate_str_details, duplicate_int_details, pol_str):
+        info = f"EFUSE_DUPLICATE_ANALYSIS_{pol_str.upper()}"
+        self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
+        
+        if duplicate_str_details:
+            info = "STRING_ID_DUPLICATES:"
+            self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
+            
+            for dup in duplicate_str_details:
+                info = f"  DUPLICATE_STR_ID: {dup['efuse_id']} | COUNT: {dup['count']} | HW_ADDRS: {','.join(dup['hw_addresses'])}"
+                self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
+        
+        if duplicate_int_details:
+            info = "INTEGER_ID_DUPLICATES:"
+            self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
+            
+            for dup in duplicate_int_details:
+                info = f"  DUPLICATE_INT_ID: {dup['efuse_id']} | COUNT: {dup['count']} | HW_ADDRS: {','.join(dup['hw_addresses'])}"
+                self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
 
-              
     def read_VDDM_TEMP_FEB(self, smx_l_side, pol, feb_type, check_continue=None):
         # Function to read the VDDM and TEMP of the ASICs
         info = ""
@@ -518,13 +622,13 @@ class OperatingFunctions:
                     pass
                 
     # To check calibration function
-    def calib_FEB(self, smx_l_side, trim_dir, pol, feb_type, cal_asic_list, npulses = 40, amp_cal_min = 30, amp_cal_max = 247, amp_cal_fast = 30, much_mode_on = 0, check_continue=None):
-        # Function to calibrate the ADC and FAST discriminator of each ASIC according to the given polarity
+    def calib_FEB(self, smx_l_side, trim_dir, pol, feb_type, cal_asic_list, npulses=40, amp_cal_min=30, amp_cal_max=247, amp_cal_fast=30, much_mode_on=0, check_continue=None, progress_callback=None, base_progress=0):
         info = ""
         feb_type_sw = []
         self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
         filename_trim = trim_dir
         pol_calib = 0
+        
         if (pol == 'N' or pol == '0'):
             pol_str = 'elect'
             pol_calib = 0
@@ -535,6 +639,8 @@ class OperatingFunctions:
             info = 'TRIM_FILE_P'
         else:
             log.error("Please check the polarity is correct: (ex: string 'N' or '0', 'P' or '1')")
+            return -1
+            
         self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
         
         if check_continue and not check_continue():
@@ -546,6 +652,17 @@ class OperatingFunctions:
             feb_type_sw.extend(self.vd.feb_type_sw_A)
         else:
             feb_type_sw.extend(self.vd.feb_type_sw_B)
+        
+        total_iterations = 0
+        for asic_sw in feb_type_sw:
+            for smx in smx_l_side:
+                if ((smx.address == asic_sw) and (smx.address in cal_asic_list)):
+                    total_iterations += 1
+        
+        current_iteration = 0
+        
+        log.info(f"Starting calibration for {total_iterations} ASICs on {pol_str} side")
+        log.info(f"Calibration parameters: npulses={npulses}, amp_range=[{amp_cal_min}-{amp_cal_max}], amp_fast={amp_cal_fast}")
         
         for asic_sw in feb_type_sw:
             if check_continue and not check_continue():
@@ -559,95 +676,123 @@ class OperatingFunctions:
                 
                 if ((smx.address == asic_sw) and (smx.address in cal_asic_list)):
                     asic_hw_addr = smx.address
-                    # Launching the calibration with the corresponding
+                    
+                    if progress_callback:
+                        progress_callback(base_progress, current_iteration, total_iterations, "starting")
+                    
                     info = "--> RUNNING CALIBRATION FOR ASIC with HW ADDRESS {} in {}".format(asic_hw_addr, pol_str)
                     log.info(info)
-                    # Elements for the filename
-                    asic_id_str = smx.read_efuse_str()
-                    vref_n = smx.read(130,8)&0xff
-                    vref_p = smx.read(130,9)&0xff
-                    vref_t = smx.read(130,18)&0xff
-                    thr2_glb = smx.read(130,7)&0xff
-                    date_fw = datetime.now().strftime("%y%m%d_%H%M")
-                    filename_str = 'ftrim_' + asic_id_str + '_HW_' + str(asic_hw_addr) + '_SET_'+ str(vref_p) + '_' + str(vref_n) + '_' + str(vref_t) + '_' + str(thr2_glb) + '_R_' + str(amp_cal_min) + '_' + str(amp_cal_max) + '_' + pol_str
-                    filename_trim = trim_dir + filename_str
-                    # Executing calibration
-                    log.info("Calib file name: {}".format(filename_trim))
                     
-                    if hasattr(self, 'run_with_timeout_and_interrupt'):
-                        log.info(f"Running get_trim_adc_SA with timeout and interrupt for ASIC {asic_hw_addr}")
+                    try:
+                        asic_id_str = smx.read_efuse_str()
+                        vref_n = smx.read(130,8)&0xff
+                        vref_p = smx.read(130,9)&0xff
+                        vref_t = smx.read(130,18)&0xff
+                        thr2_glb = smx.read(130,7)&0xff
+                        date_fw = datetime.now().strftime("%y%m%d_%H%M")
+                        filename_str = 'ftrim_' + asic_id_str + '_HW_' + str(asic_hw_addr) + '_SET_'+ str(vref_p) + '_' + str(vref_n) + '_' + str(vref_t) + '_' + str(thr2_glb) + '_R_' + str(amp_cal_min) + '_' + str(amp_cal_max) + '_' + pol_str
+                        filename_trim = trim_dir + filename_str
                         
-                        result = self.run_with_timeout_and_interrupt(
-                            smx.get_trim_adc_SA,
-                            args=(pol_calib, trim_final, 40, amp_cal_min, amp_cal_max, much_mode_on),
-                            check_continue=check_continue,
-                            timeout=None
-                        )
+                        log.info("Calib file name: {}".format(filename_trim))
                         
-                        if result is None and check_continue and not check_continue():
-                            log.info(f"get_trim_adc_SA was interrupted for ASIC {asic_hw_addr}")
-                            return -1
+                        if progress_callback:
+                            progress_callback(base_progress, current_iteration + 0.1, total_iterations, "ADC calib")
+                        
+                        if hasattr(self, 'run_with_timeout_and_interrupt'):
+                            log.info(f"Running get_trim_adc_SA with timeout and interrupt for ASIC {asic_hw_addr}")
+                            
+                            result = self.run_with_timeout_and_interrupt(
+                                smx.get_trim_adc_SA,
+                                args=(pol_calib, trim_final, 40, amp_cal_min, amp_cal_max, much_mode_on),
+                                check_continue=check_continue,
+                                timeout=None
+                            )
+                            
+                            if result is None and check_continue and not check_continue():
+                                log.info(f"get_trim_adc_SA was interrupted for ASIC {asic_hw_addr}")
+                                return -1
+                            
+                            if check_continue and not check_continue():
+                                log.info(f"calib_FEB aborted after get_trim_adc_SA for ASIC {asic_hw_addr}")
+                                return -1
+                        else:
+                            smx.get_trim_adc_SA(pol_calib, trim_final, 40, amp_cal_min, amp_cal_max, much_mode_on)
+                            
+                            if check_continue and not check_continue():
+                                log.info(f"calib_FEB aborted after get_trim_adc_SA for ASIC {asic_hw_addr}")
+                                return -1
+                        
+                        if progress_callback:
+                            progress_callback(base_progress, current_iteration + 0.5, total_iterations, "FAST calib")
+                        
+                        if hasattr(self, 'run_with_timeout_and_interrupt'):
+                            log.info(f"Running get_trim_fast with timeout and interrupt for ASIC {asic_hw_addr}")
+                            result = self.run_with_timeout_and_interrupt(
+                                smx.get_trim_fast,
+                                args=(pol_calib, trim_final, npulses, amp_cal_fast, much_mode_on),
+                                check_continue=check_continue,
+                                timeout=None
+                            )
+                            
+                            if result is None and check_continue and not check_continue():
+                                log.info(f"get_trim_fast was interrupted for ASIC {asic_hw_addr}")
+                                return -1
+                            
+                            if check_continue and not check_continue():
+                                log.info(f"calib_FEB aborted after get_trim_fast for ASIC {asic_hw_addr}")
+                                return -1
+                        else:
+                            smx.get_trim_fast(pol_calib, trim_final, npulses, amp_cal_fast, much_mode_on)
                         
                         if check_continue and not check_continue():
-                            log.info(f"calib_FEB aborted after get_trim_adc_SA for ASIC {asic_hw_addr}")
+                            log.info(f"calib_FEB aborted before writing trim file for ASIC {asic_hw_addr}")
                             return -1
                         
-                        log.info(f"Running get_trim_fast with timeout and interrupt for ASIC {asic_hw_addr}")
-                        result = self.run_with_timeout_and_interrupt(
-                            smx.get_trim_fast,
-                            args=(pol_calib, trim_final, npulses, amp_cal_fast, much_mode_on),
-                            check_continue=check_continue,
-                            timeout=None
-                        )
+                        if progress_callback:
+                            progress_callback(base_progress, current_iteration + 0.8, total_iterations, "writing file")
                         
-                        if result is None and check_continue and not check_continue():
-                            log.info(f"get_trim_fast was interrupted for ASIC {asic_hw_addr}")
-                            return -1
+                        if hasattr(self, 'run_with_timeout_and_interrupt'):
+                            log.info(f"Running write_trim_file with timeout and interrupt for ASIC {asic_hw_addr}")
+                            result = self.run_with_timeout_and_interrupt(
+                                smx.write_trim_file,
+                                args=(filename_trim, pol_calib, trim_final, amp_cal_min, amp_cal_max, amp_cal_fast, much_mode_on),
+                                check_continue=check_continue,
+                                timeout=None
+                            )
+                            
+                            if result is None and check_continue and not check_continue():
+                                log.info(f"write_trim_file was interrupted for ASIC {asic_hw_addr}")
+                                return -1
+                        else:
+                            smx.write_trim_file(filename_trim, pol_calib, trim_final, amp_cal_min, amp_cal_max, amp_cal_fast, much_mode_on)
                         
-                        if check_continue and not check_continue():
-                            log.info(f"calib_FEB aborted after get_trim_fast for ASIC {asic_hw_addr}")
-                            return -1
-                    else:
-                        smx.get_trim_adc_SA(pol_calib, trim_final, 40, amp_cal_min, amp_cal_max, much_mode_on)
+                        info = "CAL_ASIC_HW_ADDR_{}: {}.txt".format(asic_hw_addr, filename_str)
+                        self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
+                        self.df.write_log_file(self.vd.module_dir, self.vd.module_sn, info)
                         
-                        if check_continue and not check_continue():
-                            log.info(f"calib_FEB aborted after get_trim_adc_SA for ASIC {asic_hw_addr}")
-                            return -1
+                        log.info(f"Successfully completed calibration for ASIC {asic_hw_addr}")
                         
-                        smx.get_trim_fast(pol_calib, trim_final, npulses, amp_cal_fast, much_mode_on)
-                        
-                    if check_continue and not check_continue():
-                        log.info(f"calib_FEB aborted before writing trim file for ASIC {asic_hw_addr}")
-                        return -1
+                    except Exception as e:
+                        log.error(f"Error during calibration of ASIC {asic_hw_addr}: {str(e)}")
+                        pass
                     
-                    if hasattr(self, 'run_with_timeout_and_interrupt'):
-                        log.info(f"Running write_trim_file with timeout and interrupt for ASIC {asic_hw_addr}")
-                        result = self.run_with_timeout_and_interrupt(
-                            smx.write_trim_file,
-                            args=(filename_trim, pol_calib, trim_final, amp_cal_min, amp_cal_max, amp_cal_fast, much_mode_on),
-                            check_continue=check_continue,
-                            timeout=None
-                        )
-                        
-                        if result is None and check_continue and not check_continue():
-                            log.info(f"write_trim_file was interrupted for ASIC {asic_hw_addr}")
-                            return -1
-                    else:
-                        smx.write_trim_file(filename_trim, pol_calib, trim_final, amp_cal_min, amp_cal_max, amp_cal_fast, much_mode_on)
+                    current_iteration += 1
                     
-                    info = "CAL_ASIC_HW_ADDR_{}: {}.txt".format(asic_hw_addr,filename_str)
-                    self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
-                    self.df.write_log_file(self.vd.module_dir, self.vd.module_sn, info)            
+                    if progress_callback:
+                        progress_callback(base_progress, current_iteration, total_iterations, "completed")
+                        
+                    log.info(f"Completed calibration for ASIC {asic_hw_addr} ({current_iteration}/{total_iterations})")
                 else:
                     pass
                     
+        log.info(f"calib_FEB completed for {pol_str} side: {current_iteration}/{total_iterations} ASICs processed")
         return 0
 
-    def set_trim_calib(self, smx_l_side, trim_dir, pol, feb_type, cal_asic_list, much_mode_on = 0, check_continue=None):
-        # Function to set the calibration values the ADC and FAST discriminator of each ASIC according to the given polarity and the ASIC ID                            
+    def set_trim_calib(self, smx_l_side, trim_dir, pol, feb_type, cal_asic_list, much_mode_on=0, check_continue=None, progress_callback=None, base_progress=0):
         filename_trim = trim_dir
         feb_type_sw = []
         pol_calib = 0
+        
         if (pol == 'N' or pol == '0'):
             pol_str = 'elect'
             pol_calib = 0
@@ -656,7 +801,8 @@ class OperatingFunctions:
             pol_calib = 1
         else:
             log.error("Please check the polarity is correct: (ex: string 'N' or '0', 'P' or '1')")
-
+            return -1
+            
         if (feb_type[-2:-1] == "A"):
             feb_type_sw.extend(self.vd.feb_type_sw_A)
         else:
@@ -665,7 +811,15 @@ class OperatingFunctions:
         if check_continue and not check_continue():
             log.info("set_trim_calib aborted during initialization")
             return -1
-
+        
+        total_iterations = 0
+        for asic_sw in feb_type_sw:
+            for smx in smx_l_side:
+                if ((smx.address == asic_sw) and (smx.address in cal_asic_list)):
+                    total_iterations += 1
+        
+        current_iteration = 0
+        
         for asic_sw in feb_type_sw:
             if check_continue and not check_continue():
                 log.info(f"set_trim_calib aborted at asic_sw={asic_sw}")
@@ -678,57 +832,66 @@ class OperatingFunctions:
                     
                 if ((smx.address == asic_sw) and (smx.address in cal_asic_list)):
                     asic_hw_addr = smx.address
-                    # Setting the TRIM calibration values                                                                                                                  
+                    
+                    if progress_callback:
+                        progress_callback(base_progress, current_iteration, total_iterations)
+                                                                                                                                     
                     info = "--> SETTING TRIM CALIBRATION VALUES FOR ASIC with HW ADDRESS {} in {}".format(asic_hw_addr, pol_str)
                     log.info(info)
-                    # Elements for the trim file
                     
-                    if hasattr(self, 'run_with_timeout_and_interrupt'):
-                        log.info(f"Running read_efuse_str with timeout and interrupt for ASIC {smx.address}")
-                        asic_id_str = self.run_with_timeout_and_interrupt(
-                            smx.read_efuse_str,
-                            args=(),
-                            check_continue=check_continue,
-                            timeout=None
-                        )
-                        
-                        if asic_id_str is None and check_continue and not check_continue():
-                            log.info(f"read_efuse_str was interrupted for ASIC {smx.address}")
-                            return -1
-                        
-                        if check_continue and not check_continue():
-                            log.info(f"set_trim_calib aborted after read_efuse_str for ASIC {smx.address}")
-                            return -1
+                    try:
+                        if hasattr(self, 'run_with_timeout_and_interrupt'):
+                            log.info(f"Running read_efuse_str with timeout and interrupt for ASIC {smx.address}")
+                            asic_id_str = self.run_with_timeout_and_interrupt(
+                                smx.read_efuse_str,
+                                args=(),
+                                check_continue=check_continue,
+                                timeout=None
+                            )
                             
-                        log.info(f"Running set_trim with timeout and interrupt for ASIC {smx.address}")
-                        result = self.run_with_timeout_and_interrupt(
-                            smx.set_trim,
-                            args=(trim_dir, pol_calib, asic_id_str),
-                            check_continue=check_continue,
-                            timeout=None
-                        )
+                            if asic_id_str is None and check_continue and not check_continue():
+                                log.info(f"read_efuse_str was interrupted for ASIC {smx.address}")
+                                return -1
+                            
+                            if check_continue and not check_continue():
+                                log.info(f"set_trim_calib aborted after read_efuse_str for ASIC {smx.address}")
+                                return -1
+                                
+                            log.info(f"Running set_trim with timeout and interrupt for ASIC {smx.address}")
+                            result = self.run_with_timeout_and_interrupt(
+                                smx.set_trim,
+                                args=(trim_dir, pol_calib, asic_id_str),
+                                check_continue=check_continue,
+                                timeout=None
+                            )
+                            
+                            if result is None and check_continue and not check_continue():
+                                log.info(f"set_trim was interrupted for ASIC {smx.address}")
+                                return -1
+                        else:
+                            asic_id_str = smx.read_efuse_str()
+                            smx.set_trim(trim_dir, pol_calib, asic_id_str)
+                            
+                    except Exception as e:
+                        log.error(f"Error processing ASIC {asic_hw_addr}: {str(e)}")
+                        pass
+                    
+                    current_iteration += 1
+                    
+                    if progress_callback:
+                        progress_callback(base_progress, current_iteration, total_iterations)
                         
-                        if result is None and check_continue and not check_continue():
-                            log.info(f"set_trim was interrupted for ASIC {smx.address}")
-                            return -1
-                    else:
-                        asic_id_str = smx.read_efuse_str()
-                        smx.set_trim(trim_dir, pol_calib, asic_id_str)
+                    log.info(f"Completed ASIC {asic_hw_addr} ({current_iteration}/{total_iterations})")
                 else:
                     pass
+                    
         return 0
 
-    def check_trim(self, smx_l_side, pscan_dir, pol, feb_type, cal_asic_list, disc_list = [5,10,16,24,30,31], vp_min = 0, vp_max = 255, vp_step = 1, npulses = 100, check_continue=None):
-        # Function to measure the ADC and FAST discriminator response function for a  given number of discriminators of an ASIC                                                          
+    def check_trim(self, smx_l_side, pscan_dir, pol, feb_type, cal_asic_list, disc_list=[5,10,16,24,30,31], vp_min=0, vp_max=255, vp_step=1, npulses=100, check_continue=None, progress_callback=None, base_progress=0):
         info = ""
         feb_type_sw = []
         self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
         pol_calib = 0
-        disc_list = disc_list
-        npulses = npulses
-        vp_min = vp_min
-        vp_max = vp_max
-        vp_step = vp_step
         
         if (pol == 'N' or pol == '0'):
             pol_str = 'elect'
@@ -740,6 +903,7 @@ class OperatingFunctions:
             info = 'PSCAN_FILE_P'
         else:
             log.error("Please check the polarity is correct: (ex: string 'N' or '0', 'P' or '1')")
+            return -1
             
         self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
         
@@ -752,6 +916,16 @@ class OperatingFunctions:
         else:
             feb_type_sw.extend(self.vd.feb_type_sw_B)
 
+        total_iterations = 0
+        for asic_sw in feb_type_sw:
+            for smx in smx_l_side:
+                if ((smx.address == asic_sw) and (smx.address in cal_asic_list)):
+                    total_iterations += 1
+        
+        current_iteration = 0
+        
+        log.info(f"Starting check_trim for {total_iterations} ASICs on {pol_str} side")
+
         for asic_sw in feb_type_sw:
             if check_continue and not check_continue():
                 log.info(f"check_trim aborted at asic_sw={asic_sw}")
@@ -763,56 +937,88 @@ class OperatingFunctions:
                     return -1
                 
                 asic_hw_addr = smx.address
-                if ((smx.address == asic_sw) and (smx.address in cal_asic_list)):                                                                                                  
+                if ((smx.address == asic_sw) and (smx.address in cal_asic_list)):
+                    
+                    if progress_callback:
+                        progress_callback(base_progress, current_iteration, total_iterations)
+                    
                     info = "PSCAN_ASIC_HW_ADDR_{}: {}".format(asic_hw_addr, pol_str)
                     log.info(info)
-                                                                                                                                            
-                    asic_id_str = smx.read_efuse_str()
                     
-                    if hasattr(self, 'run_with_timeout_and_interrupt'):
-                        log.info(f"Running check_trim_red with timeout and interrupt for ASIC {asic_hw_addr}")
+                    try:
+                        asic_id_str = smx.read_efuse_str()
                         
-                        pscan_filename = self.run_with_timeout_and_interrupt(
-                            smx.check_trim_red,
-                            args=(
-                                pscan_dir, pol_calib, asic_id_str, 
-                                disc_list, vp_min, vp_max, vp_step, npulses
-                            ),
-                            check_continue=check_continue,
-                            timeout=None
-                        )
+                        if check_continue and not check_continue():
+                            log.info(f"check_trim aborted after read_efuse_str for ASIC {asic_hw_addr}")
+                            return -1
                         
-                        if pscan_filename is None:
-                            if check_continue and not check_continue():
-                                log.info(f"check_trim_red was interrupted for ASIC {asic_hw_addr}")
-                                return -1
-                            else:
-                                log.error(f"check_trim_red failed for ASIC {asic_hw_addr}")
-                                continue
-                    else:
-                        log.warning("run_with_timeout_and_interrupt not available, using original method (cannot be interrupted)")
-                        try:
-                            pscan_filename = smx.check_trim_red(
-                                pscan_dir, pol_calib, asic_id_str, 
-                                disc_list, vp_min, vp_max, vp_step, npulses
+                        pscan_filename = None
+                        if hasattr(self, 'run_with_timeout_and_interrupt'):
+                            log.info(f"Running check_trim_red with timeout and interrupt for ASIC {asic_hw_addr}")
+                            log.info(f"  Parameters: disc_list={disc_list}, vp_range=[{vp_min}:{vp_max}:{vp_step}], npulses={npulses}")
+                            
+                            pscan_filename = self.run_with_timeout_and_interrupt(
+                                smx.check_trim_red,
+                                args=(
+                                    pscan_dir, pol_calib, asic_id_str, 
+                                    disc_list, vp_min, vp_max, vp_step, npulses
+                                ),
+                                check_continue=check_continue,
+                                timeout=None
                             )
-                        except Exception as e:
-                            log.error(f"Error in check_trim_red for ASIC {asic_hw_addr}: {str(e)}")
-                            continue
-                    
-                    if check_continue and not check_continue():
-                        log.info(f"check_trim aborted after check_trim_red for ASIC {asic_hw_addr}")
-                        return -1
+                            
+                            if pscan_filename is None:
+                                if check_continue and not check_continue():
+                                    log.info(f"check_trim_red was interrupted for ASIC {asic_hw_addr}")
+                                    return -1
+                                else:
+                                    log.error(f"check_trim_red failed for ASIC {asic_hw_addr}")
+                                    current_iteration += 1
+                                    if progress_callback:
+                                        progress_callback(base_progress, current_iteration, total_iterations)
+                                    continue
+                        else:
+                            log.warning("run_with_timeout_and_interrupt not available, using original method (cannot be interrupted)")
+                            try:
+                                pscan_filename = smx.check_trim_red(
+                                    pscan_dir, pol_calib, asic_id_str, 
+                                    disc_list, vp_min, vp_max, vp_step, npulses
+                                )
+                            except Exception as e:
+                                log.error(f"Error in check_trim_red for ASIC {asic_hw_addr}: {str(e)}")
+                                current_iteration += 1
+                                if progress_callback:
+                                    progress_callback(base_progress, current_iteration, total_iterations)
+                                continue
                         
-                    info = "PSCAN_ASIC_HW_ADDR_{}: {}".format(asic_hw_addr, pscan_filename)
-                    self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
-                    self.df.write_log_file(self.vd.module_dir, self.vd.module_sn, info)
+                        if check_continue and not check_continue():
+                            log.info(f"check_trim aborted after check_trim_red for ASIC {asic_hw_addr}")
+                            return -1
+                        
+                        if pscan_filename:
+                            info = "PSCAN_ASIC_HW_ADDR_{}: {}".format(asic_hw_addr, pscan_filename)
+                            self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
+                            self.df.write_log_file(self.vd.module_dir, self.vd.module_sn, info)
+                            log.info(f"Successfully completed check_trim for ASIC {asic_hw_addr}")
+                        
+                    except Exception as e:
+                        log.error(f"Unexpected error processing ASIC {asic_hw_addr}: {str(e)}")
+                        pass
+                    
+                    current_iteration += 1
+                    
+                    if progress_callback:
+                        progress_callback(base_progress, current_iteration, total_iterations)
+                        
+                    log.info(f"Completed ASIC {asic_hw_addr} ({current_iteration}/{total_iterations})")
                 else:
                     pass
                     #info = "SKIP_PSCAN_ASIC_HW_ADDR_{}".format(asic_hw_addr)
                     #log.info(info)
-                    #self.df.write_data_file(self.vd.module_dir, self.vd.self.vd.module_sn_tmp, info)
+                    #self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
                     #self.df.write_log_file(self.vd.module_dir, self.vd.module_sn, info)
+                    
+        log.info(f"check_trim completed for {pol_str} side: {current_iteration}/{total_iterations} ASICs processed")
         return 0
 
     def connection_check(self, smx_l_side, conn_check_dir, pol, feb_type, cal_asic_list, nloops = 5, vref_t = 108, check_continue=None):

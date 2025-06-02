@@ -13,6 +13,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolBar
 from matplotlib.figure import Figure
 import datetime
+from console_window import ConsoleManager
 
 class TabInterface(QWidget):
     
@@ -29,6 +30,10 @@ class TabInterface(QWidget):
         self.last_vddm_update_time = 0
         self.temp_colors = ["red", "yellow", "green", "blue"]
         self.default_save_path = "/home/cbm/cbmsoft/emu_test_module_arr/python/module_files/"
+        
+        if not hasattr(root, 'console_manager'):
+            root.console_manager = ConsoleManager()
+        self.console_manager = root.console_manager
     
         main_layout = QGridLayout(self)
         
@@ -784,9 +789,16 @@ class TabInterface(QWidget):
         self.save_button.setFixedWidth(200)
         self.save_button.clicked.connect(self.save_observations)
         
+        self.terminal_button = QPushButton("SHOW TERMINAL")
+        self.terminal_button.setStyleSheet(button_style)
+        self.terminal_button.setFont(QFont("Helvetica", 13))
+        self.terminal_button.setFixedWidth(200)
+        self.terminal_button.clicked.connect(self.show_console)
+        
         button_layout.addWidget(self.run_button)
         button_layout.addWidget(self.stop_button)
         button_layout.addWidget(self.save_button)
+        button_layout.addWidget(self.terminal_button)
         
         main_layout.addWidget(main_container, 0, 0)
         main_layout.addWidget(progress_widget, 1, 0)
@@ -838,21 +850,21 @@ class TabInterface(QWidget):
                 if lv_values is not None:
                     if side_type == 'N':
                         if volt_type == '1.2':
-                            self.nside_entries[0].setText(f"{lv_values[0]:.2f}")
-                            self.nside_entries[1].setText(f"{lv_values[1]:.2f}")
+                            self.nside_entries[0].setText(f"{lv_values[0]:.2f}V")
+                            self.nside_entries[1].setText(f"{lv_values[1]:.2f}A")
                             success = lv_values[0] > 0
                         else:
-                            self.nside_entries[2].setText(f"{lv_values[0]:.2f}")
-                            self.nside_entries[3].setText(f"{lv_values[1]:.2f}")
+                            self.nside_entries[2].setText(f"{lv_values[0]:.2f}V")
+                            self.nside_entries[3].setText(f"{lv_values[1]:.2f}A")
                             success = lv_values[0] > 0
                     else:
                         if volt_type == '1.2':
-                            self.pside_entries[0].setText(f"{lv_values[0]:.2f}")
-                            self.pside_entries[1].setText(f"{lv_values[1]:.2f}")
+                            self.pside_entries[0].setText(f"{lv_values[0]:.2f}V")
+                            self.pside_entries[1].setText(f"{lv_values[1]:.2f}A")
                             success = lv_values[0] > 0
                         else:
-                            self.pside_entries[2].setText(f"{lv_values[0]:.2f}")
-                            self.pside_entries[3].setText(f"{lv_values[1]:.2f}")
+                            self.pside_entries[2].setText(f"{lv_values[0]:.2f}V")
+                            self.pside_entries[3].setText(f"{lv_values[1]:.2f}A")
                             success = lv_values[0] > 0
                     
                     if success:
@@ -931,7 +943,150 @@ class TabInterface(QWidget):
         self.active_canvas = self.canvas_pside
         self.save_figure()
         
-    def update_feb_nside(self, v12_value, i12_value, v18_value, i18_value):
+    def show_efuse_duplicate_warning(self, duplicate_str_details, duplicate_int_details, pol_str, feb_type):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Warning)
+        msg.setWindowTitle("EFUSE ID Duplicate Warning")
+        msg.setText(f"Duplicate EFUSE IDs Detected on {pol_str}")
+        
+        warning_text = f"Duplicate EFUSE IDs found on {feb_type} {pol_str}:\n\n"
+        
+        if duplicate_str_details:
+            warning_text += "STRING ID DUPLICATES:\n"
+            for dup in duplicate_str_details:
+                warning_text += f"• ID '{dup['efuse_id']}' found on {dup['count']} ASICs (HW: {', '.join(dup['hw_addresses'])})\n"
+            warning_text += "\n"
+        
+        if duplicate_int_details:
+            warning_text += "INTEGER ID DUPLICATES:\n"
+            for dup in duplicate_int_details:
+                warning_text += f"• ID {dup['efuse_id']} found on {dup['count']} ASICs (HW: {', '.join(dup['hw_addresses'])})\n"
+        
+        warning_text += "\nThis may indicate:\n"
+        warning_text += "• Manufacturing defect in ASIC EFUSE programming\n"
+        warning_text += "• Incorrect ASIC installation\n"
+        warning_text += "• Communication errors during ID reading\n"
+        warning_text += "• Hardware malfunction\n\n"
+        warning_text += "Tests will continue, but duplicated ASICs may cause issues.\n"
+        warning_text += "Consider replacing affected ASICs or investigating further."
+        
+        msg.setInformativeText(warning_text)
+        
+        detailed_text = "DETAILED DUPLICATE ANALYSIS:\n\n"
+        
+        if duplicate_str_details:
+            detailed_text += "STRING ID DUPLICATES:\n"
+            for dup in duplicate_str_details:
+                detailed_text += f"EFUSE String ID: {dup['efuse_id']}\n"
+                detailed_text += f"Duplicate count: {dup['count']}\n"
+                detailed_text += "ASICs affected:\n"
+                for asic in dup['asics']:
+                    detailed_text += f"  - {asic['feb_type']} {asic['polarity']} HW:{asic['hw_addr']} (INT:{asic['efuse_int']})\n"
+                detailed_text += "\n"
+        
+        if duplicate_int_details:
+            detailed_text += "INTEGER ID DUPLICATES:\n"
+            for dup in duplicate_int_details:
+                detailed_text += f"EFUSE Integer ID: {dup['efuse_id']}\n"
+                detailed_text += f"Duplicate count: {dup['count']}\n"
+                detailed_text += "ASICs affected:\n"
+                for asic in dup['asics']:
+                    detailed_text += f"  - {asic['feb_type']} {asic['polarity']} HW:{asic['hw_addr']} (STR:{asic['efuse_str']})\n"
+                detailed_text += "\n"
+        
+        detailed_text += "RECOMMENDATIONS:\n"
+        detailed_text += "1. Verify ASIC physical installation\n"
+        detailed_text += "2. Re-read EFUSE IDs to confirm duplicates\n"
+        detailed_text += "3. Check for communication issues\n"
+        detailed_text += "4. Consider ASIC replacement if duplicates persist\n"
+        detailed_text += "5. Document findings for quality control"
+        
+        msg.setDetailedText(detailed_text)
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.setDefaultButton(QMessageBox.Ok)
+        msg.setWindowModality(Qt.ApplicationModal)
+        msg.exec_()
+        
+    def show_lv_warning(self, side, warnings, warningType):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Warning)
+        msg.setWindowTitle("LV Current Warning")
+        warning_text = ""
+        
+        if warningType == "low":
+            msg.setText(f"Low Current Detected on {side}")
+        
+            warning_text += "The following currents are below the expected threshold (0.8A):\n\n"
+        elif warningType == "high":
+            msg.setText(f"High Current Detected on {side}")
+        
+            warning_text += "The following currents are above the expected threshold (3.0A):\n\n"
+            
+        for warning in warnings:
+            warning_text += f"• {warning}\n"
+        
+        warning_text += "\nThis may indicate:\n"
+        warning_text += "• Connection issues\n"
+        warning_text += "• Module malfunction\n"
+        warning_text += "• Incorrect configuration\n\n"
+        warning_text += "Please verify connections and module status."
+        
+        msg.setDetailedText(warning_text)
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.setDefaultButton(QMessageBox.Ok)
+        
+        msg.setWindowModality(Qt.ApplicationModal)
+        msg.exec_()
+        
+    def stop_tests(self):
+        self.stop_button.setText("STOPPING...")
+        self.stop_button.setEnabled(False)
+        self.run_button.setEnabled(True)
+        self.run_button.setText("RUN")
+        self.test_running = False
+        
+        if hasattr(self, "worker") and self.worker:
+            self.worker.request_stop()
+            
+        QMessageBox.information(self, f"Stopping Test in Tab {self.tab_num}", "Tests is being stopped. The process might continue for a brief moment.")
+        
+    def show_lv_critical_error(self, side, errors):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Critical)
+        msg.setWindowTitle("CRITICAL LV ERROR")
+        msg.setText(f"CRITICAL: Unsafe Current Levels on {side}")
+        
+        detailed_text = "The following currents are below the expected threshold (1.5A):\n\n"
+        
+        for error in errors:
+            detailed_text += f"• {error}\n"
+        
+        detailed_text += "SAFETY MEASURES:\n"
+        detailed_text += "• Tests have been automatically stopped\n"
+        detailed_text += "• Module may be damaged or disconnected\n"
+        detailed_text += "• Check all connections before restarting\n"
+        detailed_text += "• Contact technical support if problem persists\n\n"
+        detailed_text += "DO NOT RESTART TESTS until the issue is resolved."
+        
+        msg.setDetailedText(detailed_text)
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.setDefaultButton(QMessageBox.Ok)
+        msg.setWindowModality(Qt.ApplicationModal)
+        
+        msg.setStyleSheet("""
+            QMessageBox {
+                background-color: #ffebee;
+            }
+            QMessageBox QLabel {
+                color: #c62828;
+                font-weight: bold;
+            }
+        """)
+        
+        self.stop_tests()
+        msg.exec_()
+        
+    def update_feb_nside(self, v12_value, i12_value, v18_value, i18_value, test_step=""):
         if v12_value != -1.0:
             self.nside_entries[0].setText(str(v12_value) + "V")
         if i12_value != -1.0:
@@ -940,8 +1095,42 @@ class TabInterface(QWidget):
             self.nside_entries[2].setText(str(v18_value) + "V")
         if i18_value != -1.0:
             self.nside_entries[3].setText(str(i18_value) + "A")
+            
+        if test_step == "read_lv_bc":
+            warnings = []
+            
+            if i12_value != -1.0 and i12_value < 0.8:
+                warnings.append(f"N-side 1.2V current is {i12_value:.3f}A (< 0.8A)")
+            
+            if i18_value != -1.0 and i18_value < 0.8:
+                warnings.append(f"N-side 1.8V current is {i18_value:.3f}A (< 0.8A)")
+            
+            if warnings:
+                self.show_lv_warning("N-side", warnings, "low")
+                
+        if test_step == "read_lv_ac":
+            warnings = []
+            errors = []
+            
+            if i12_value != -1.0 and i12_value > 3.0:
+                warnings.append(f"N-Side 1.2V current is {i12_value:.3f}A (> 3.0V)")
+                
+            if i18_value != -1.0 and i18_value > 2.5:
+                warnings.append(f"N-Side 1.8V current is {i18_value:.3f}A (> 2.5V)")
+                
+            if warnings:
+                self.show_lv_warning("N-Side", warnings, "high")
+                
+            if i12_value != -1.0 and i12_value < 1.5:
+                errors.append(f"N-Side 1.2V current is {i12_value:.3f}A (< 1.5A)")
+                
+            if i18_value != -1.0 and i18_value < 1.5:
+                errors.append(f"N-Side 1.8V current is {i18_value:.3f}A (< 1.5A)")
+                
+            if errors:
+                self.show_lv_critical_error("N-Side", errors)
         
-    def update_feb_pside(self, v12_value, i12_value, v18_value, i18_value):
+    def update_feb_pside(self, v12_value, i12_value, v18_value, i18_value, test_step=""):
         if v12_value != -1.0:
             self.pside_entries[0].setText(str(v12_value) + "V")
         if i12_value != -1.0:
@@ -950,6 +1139,40 @@ class TabInterface(QWidget):
             self.pside_entries[2].setText(str(v18_value) + "V")
         if i18_value != -1.0:
             self.pside_entries[3].setText(str(i18_value) + "A")
+            
+        if test_step == "read_lv_bc":
+            warnings = []
+            
+            if i12_value != -1.0 and i12_value < 0.8:
+                warnings.append(f"P-side 1.2V current is {i12_value:.3f}A (< 0.8A)")
+            
+            if i18_value != -1.0 and i18_value < 0.8:
+                warnings.append(f"P-side 1.8V current is {i18_value:.3f}A (< 0.8A)")
+            
+            if warnings:
+                self.show_lv_warning("P-side", warnings, "low")
+                
+        if test_step == "read_lv_ac":
+            warnings = []
+            errors = []
+            
+            if i12_value != -1.0 and i12_value > 3.0:
+                warnings.append(f"P-Side 1.2V current is {i12_value:.3f}A (> 3.0V)")
+                
+            if i18_value != -1.0 and i18_value > 2.5:
+                warnings.append(f"P-Side 1.8V current is {i18_value:.3f}A (> 2.5V)")
+                
+            if warnings:
+                self.show_lv_warning("P-Side", warnings, "high")
+                
+            if i12_value != -1.0 and i12_value < 1.5:
+                errors.append(f"P-Side 1.2V current is {i12_value:.3f}A (< 1.5A)")
+                
+            if i18_value != -1.0 and i18_value < 1.5:
+                errors.append(f"P-Side 1.8V current is {i18_value:.3f}A (< 1.5A)")
+                
+            if errors:
+                self.show_lv_critical_error("P-Side", errors)
         
     def update_checkbox_feb(self):
         if self.check_lv_nside_12.isChecked():
@@ -1005,16 +1228,163 @@ class TabInterface(QWidget):
                         color_index = 2
                     
                     checkbox.setStyleSheet(f"background-color: {self.temp_colors[color_index]}; border-radius: 3px;")
+                    
+    def validate_vddm_values(self, vddm_values):
+        critical_values = {"N": [], "P": []}
+        warning_values = {"N": [], "P": []}
+        has_critical = False
+        has_warning = False
+        
+        if vddm_values.get("N"):
+            for i, value in enumerate(vddm_values["N"]):
+                if value < 1000:
+                    critical_values["N"].append({"index": i, "value": value})
+                    has_critical = True
+                elif value > 1350:
+                    warning_values["N"].append({"index": i, "value": value})
+                    has_warning = True
+        
+        if vddm_values.get("P"):
+            for i, value in enumerate(vddm_values["P"]):
+                if value < 1000:
+                    critical_values["P"].append({"index": i, "value": value})
+                    has_critical = True
+                elif value > 1350:
+                    warning_values["P"].append({"index": i, "value": value})
+                    has_warning = True
+        
+        if has_critical:
+            self.show_vddm_critical_error(critical_values)
+            return "CRITICAL_ERROR"
+        
+        if has_warning:
+            self.show_vddm_warning(warning_values)
+            return "WARNING"
+        
+        return "OK"
+
+    def show_vddm_warning(self, warning_values):
+        warning_messages = []
+        
+        if warning_values["N"]:
+            for item in warning_values["N"]:
+                warning_messages.append(f"N-side ASIC {item['index']}: {item['value']}mV (> 1350mV)")
+        
+        if warning_values["P"]:
+            for item in warning_values["P"]:
+                warning_messages.append(f"P-side ASIC {item['index']}: {item['value']}mV (> 1350mV)")
+        
+        if not warning_messages:
+            return
+        
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Warning)
+        msg.setWindowTitle("VDDM High Voltage Warning")
+        msg.setText("High VDDM Voltages Detected")
+        
+        warning_text = "The following VDDM values are above the recommended threshold (1350mV):\n\n"
+        for warning_msg in warning_messages:
+            warning_text += f"• {warning_msg}\n"
+        
+        warning_text += "\nThis may indicate:\n"
+        warning_text += "• Higher than expected power consumption\n"
+        warning_text += "• Potential thermal issues\n"
+        warning_text += "• ASIC configuration problems\n\n"
+        warning_text += "Monitor the situation closely.\n"
+        warning_text += "Tests will continue, but consider investigating if values persist."
+        
+        msg.setInformativeText(warning_text)
+        
+        detailed_text = "VDDM VOLTAGE GUIDELINES:\n"
+        detailed_text += "• Normal range: 1000-1350mV\n"
+        detailed_text += "• Warning threshold: > 1350mV\n"
+        detailed_text += "• Critical threshold: < 1000mV\n\n"
+        detailed_text += "RECOMMENDED ACTIONS:\n"
+        detailed_text += "• Monitor temperature readings\n"
+        detailed_text += "• Check ASIC configuration\n"
+        detailed_text += "• Verify cooling system operation\n"
+        detailed_text += "• Consider reducing operational parameters if needed"
+        
+        msg.setDetailedText(detailed_text)
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.setDefaultButton(QMessageBox.Ok)
+        msg.setWindowModality(Qt.ApplicationModal)
+        msg.exec_()
+
+    def show_vddm_critical_error(self, critical_values):
+        critical_messages = []
+        
+        if critical_values["N"]:
+            for item in critical_values["N"]:
+                critical_messages.append(f"N-side ASIC {item['index']}: {item['value']}mV (< 1000mV)")
+        
+        if critical_values["P"]:
+            for item in critical_values["P"]:
+                critical_messages.append(f"P-side ASIC {item['index']}: {item['value']}mV (< 1000mV)")
+        
+        if not critical_messages:
+            return
+        
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Critical)
+        msg.setWindowTitle("CRITICAL VDDM ERROR - TESTS STOPPED")
+        msg.setText("CRITICAL: VDDM Voltage Too Low")
+        
+        error_text = "DANGEROUS VDDM levels detected. Tests have been automatically stopped.\n\n"
+        error_text += "Critical values (< 1000mV):\n"
+        for critical_msg in critical_messages:
+            error_text += f"• {critical_msg}\n"
+        
+        msg.setInformativeText(error_text)
+        
+        detailed_text = "SAFETY CRITICAL SITUATION:\n"
+        detailed_text += "• VDDM voltage below safe operating threshold\n"
+        detailed_text += "• ASICs may not function correctly\n"
+        detailed_text += "• Risk of data corruption or hardware damage\n"
+        detailed_text += "• Tests automatically stopped for protection\n\n"
+        
+        detailed_text += "IMMEDIATE ACTIONS REQUIRED:\n"
+        detailed_text += "1. Check power supply connections\n"
+        detailed_text += "2. Verify module seating and contacts\n"
+        detailed_text += "3. Inspect for physical damage\n"
+        detailed_text += "4. Check power supply voltage levels\n"
+        detailed_text += "5. Contact technical support\n\n"
+        
+        detailed_text += "DO NOT restart tests until:\n"
+        detailed_text += "• Root cause is identified and fixed\n"
+        detailed_text += "• VDDM values return to normal range (1000-1350mV)\n"
+        detailed_text += "• System integrity is verified"
+        
+        msg.setDetailedText(detailed_text)
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.setDefaultButton(QMessageBox.Ok)
+        msg.setWindowModality(Qt.ApplicationModal)
+        
+        msg.setStyleSheet("""
+            QMessageBox {
+                background-color: #ffebee;
+            }
+            QMessageBox QLabel {
+                color: #c62828;
+                font-weight: bold;
+            }
+        """)
+        
+        self.stop_tests()
+        msg.exec_()
     
     def update_vddm_plot(self, nside_index, nside_values, pside_index, pside_values):
         vddm_values = { "N": nside_values if nside_values is not None else [],
                        "P": pside_values if pside_values is not None else [] }
-            
-        if vddm_values.get("N") and nside_index:
-            self.nside_datasets.append((nside_index, vddm_values.get("N", [])))
         
-        if vddm_values.get("P") and pside_index:
-            self.pside_datasets.append((pside_index, vddm_values.get("P", [])))
+        validation_result = self.validate_vddm_values(vddm_values)
+        
+        if validation_result != "CRITICAL_ERROR":
+            if vddm_values.get("N") and nside_index:
+                self.nside_datasets.append((nside_index, vddm_values.get("N", [])))
+            
+            if vddm_values.get("P") and pside_index:
+                self.pside_datasets.append((pside_index, vddm_values.get("P", [])))
         
         self.update_nside_plot()
         self.update_pside_plot()
@@ -1180,18 +1550,14 @@ class TabInterface(QWidget):
     def update_save_path(self, text):
         self.default_save_path += text
         
-    def stop_tests(self):
-        self.stop_button.setText("STOPPING...")
-        self.stop_button.setEnabled(False)
-        self.run_button.setEnabled(True)
-        self.run_button.setText("RUN")
-        self.test_running = False
+    def show_console(self):
+        self.console_manager.show_console(self.tab_num, self)
+    
+    def log_to_console(self, message, level="INFO"):
+        self.console_manager.add_log(self.tab_num, message, level)
         
-        if hasattr(self, "worker") and self.worker:
-            self.worker.request_stop()
-            
-        QMessageBox.information(self, f"Stopping Test in Tab {self.tab_num}",
-                                "Tests is being stopped. The process might continue for a brief moment.")
+    def handle_log_message(self, message, level):
+        self.console_manager.add_log(self.tab_num, message, level)
         
     def run_tests(self):
         self.nside_datasets = []
@@ -1264,9 +1630,11 @@ class TabInterface(QWidget):
         self.thread.started.connect(self.worker.run)
         self.worker.progressSignal.connect(self.update_progress)
         self.worker.infoSignal.connect(self.update_test_label)
+        self.worker.logSignal.connect(self.handle_log_message)
         self.worker.emuSignal.connect(self.update_emu_values)
         self.worker.vddmSignal.connect(self.update_vddm_plot)
         self.worker.tempSignal.connect(self.update_temp_checkboxes)
+        self.worker.efuseidWarningSignal.connect(self.show_efuse_duplicate_warning)
         self.worker.febnsideSignal.connect(self.update_feb_nside)
         self.worker.febpsideSignal.connect(self.update_feb_pside)
         self.worker.calibSignal.connect(self.update_calib_path)

@@ -80,61 +80,58 @@ class Main:
         info = "-->> FINDING VREF_P, VREF_N & THR@_GLB FOR CALIBRATION"
         self.df.write_log_file(self.vd.module_dir, self.vd.module_sn, info)
         
-        import threading
-        import time
-        
-        progress_active = True
-        test_completed = False
-        
-        def simulate_progress():
-            test_duration = self.step_times.get("get_vrefs", 250)
-            progress_steps = 50
-            step_duration = test_duration / progress_steps
-            
-            print(f"Starting progress simulation - Duration: {test_duration}s, Steps: {progress_steps}")
-            
-            for i in range(progress_steps):
-                if not progress_active or test_completed:
-                    break
-                if not check_continue():
-                    break
-                
-                time.sleep(step_duration)
-                
-                if worker_instance:
-                    worker_instance.update_granular_progress(
-                        accumulated_progress, 
-                        i + 1, 
-                        progress_steps, 
-                        "get_vrefs"
-                    )
-        
-        progress_thread = threading.Thread(target=simulate_progress)
-        progress_thread.daemon = True
-        progress_thread.start()
-        
         try:
             selected_smx_l_nside, selected_smx_l_pside, valid_nside_indexes, valid_pside_indexes = self.get_valid_selections(tab_id)
+            
+            total_asics = 0
+            if selected_smx_l_nside:
+                total_asics += len([smx for smx in selected_smx_l_nside if smx.address in valid_nside_indexes])
+            if selected_smx_l_pside:
+                total_asics += len([smx for smx in selected_smx_l_pside if smx.address in valid_pside_indexes])
+            
+            current_asic = 0
+            
+            def asic_progress_callback(base_prog, current_iter, total_iter):
+                if worker_instance and total_asics > 0:
+                    asic_progress = (current_asic + (current_iter / total_iter)) / total_asics
+                    step_progress = asic_progress * step_percentage
+                    total_progress = accumulated_progress + step_progress
+                    
+                    worker_instance.update_granular_progress(
+                        accumulated_progress, 
+                        int(asic_progress * 100), 
+                        100, 
+                        "get_vrefs"
+                    )
+                    
+                    log.debug(f"ASIC Progress: {current_asic}/{total_asics}, Iter: {current_iter}/{total_iter}, Total: {total_progress:.1f}%")
             
             cal_set_nside = None
             cal_set_pside = None
             
             if selected_smx_l_nside:
+                log.info(f"Processing N-side: {len([smx for smx in selected_smx_l_nside if smx.address in valid_nside_indexes])} ASICs")
                 cal_set_nside = self.of.scan_VrefP_N_Thr2glb(
                     selected_smx_l_nside, 'N', self.feb_nside, valid_nside_indexes, 
                     self.vd.npulses, self.vd.test_ch, self.vd.amp_cal_min, 
                     self.vd.amp_cal_max, self.vd.amp_cal_fast, self.vd.vref_t,
-                    check_continue
+                    check_continue, 
+                    progress_callback=asic_progress_callback,
+                    base_progress=accumulated_progress
                 )
+                current_asic += len([smx for smx in selected_smx_l_nside if smx.address in valid_nside_indexes])
             else:
                 log.warning(f"Tab {tab_id}: No valid N-side SMX elements for get_vrefs")
                 
             if selected_smx_l_pside:
+                log.info(f"Processing P-side: {len([smx for smx in selected_smx_l_pside if smx.address in valid_pside_indexes])} ASICs")
                 cal_set_pside = self.of.scan_VrefP_N_Thr2glb(
                     selected_smx_l_pside, 'P', self.feb_pside, valid_pside_indexes, 
                     self.vd.npulses, self.vd.test_ch, self.vd.amp_cal_min, 
                     self.vd.amp_cal_max, self.vd.amp_cal_fast, self.vd.vref_t,
-                    check_continue
+                    check_continue,
+                    progress_callback=asic_progress_callback,
+                    base_progress=accumulated_progress
                 )
             else:
                 log.warning(f"Tab {tab_id}: No valid P-side SMX elements for get_vrefs")
@@ -144,17 +141,234 @@ class Main:
             
         except Exception as e:
             log.error(f"Tab {tab_id}: Error in get_vrefs: {str(e)}")
-        finally:
-            test_completed = True
-            progress_active = False
+            raise
+        
+    def run_set_trim_calib_test(self, accumulated_progress, step_percentage, check_continue, update_progress, worker_instance, tab_id, trim_dir):
+        log.info("---------------- SETTING THE CALIBRATION TRIM ----------------------------- ")
+        info = "--> SETTING THE CALIBRATION TRIM"
+        self.df.write_log_file(self.vd.module_dir, self.vd.module_sn, info)
+        
+        try:
+            selected_smx_l_nside, selected_smx_l_pside, valid_nside_indexes, valid_pside_indexes = self.get_valid_selections(tab_id)
             
-            if progress_thread.is_alive():
-                progress_thread.join(timeout=1.0)
+            total_asics = 0
+            if selected_smx_l_nside:
+                total_asics += len([smx for smx in selected_smx_l_nside if smx.address in valid_nside_indexes])
+            if selected_smx_l_pside:
+                total_asics += len([smx for smx in selected_smx_l_pside if smx.address in valid_pside_indexes])
+            
+            current_asic = 0
+            
+            def asic_progress_callback(base_prog, current_iter, total_iter):
+                if worker_instance and total_asics > 0:
+                    asic_progress = (current_asic + (current_iter / total_iter)) / total_asics
+                    step_progress = asic_progress * step_percentage
+                    total_progress = accumulated_progress + step_progress
+                    
+                    worker_instance.update_granular_progress(
+                        accumulated_progress, 
+                        int(asic_progress * 100), 
+                        100, 
+                        "set_trim_calib"
+                    )
+                    
+                    log.debug(f"Trim Calib Progress: {current_asic}/{total_asics}, Iter: {current_iter}/{total_iter}, Total: {total_progress:.1f}%")
+            
+            if selected_smx_l_nside:
+                log.info(f"Processing N-side trim calibration: {len([smx for smx in selected_smx_l_nside if smx.address in valid_nside_indexes])} ASICs")
+                result_nside = self.of.set_trim_calib(
+                    selected_smx_l_nside, trim_dir, 'N', self.feb_nside, 
+                    valid_nside_indexes, much_mode_on=0, 
+                    check_continue=check_continue,
+                    progress_callback=asic_progress_callback,
+                    base_progress=accumulated_progress
+                )
+                current_asic += len([smx for smx in selected_smx_l_nside if smx.address in valid_nside_indexes])
+                
+                if result_nside == -1:  # Error o cancelación
+                    log.warning("N-side trim calibration was aborted or failed")
+                    return
+            else:
+                log.warning(f"Tab {tab_id}: No valid N-side SMX elements for set_trim_calib")
+            
+            if selected_smx_l_pside:
+                log.info(f"Processing P-side trim calibration: {len([smx for smx in selected_smx_l_pside if smx.address in valid_pside_indexes])} ASICs")
+                result_pside = self.of.set_trim_calib(
+                    selected_smx_l_pside, trim_dir, 'P', self.feb_pside, 
+                    valid_pside_indexes, much_mode_on=0, 
+                    check_continue=check_continue,
+                    progress_callback=asic_progress_callback,
+                    base_progress=accumulated_progress
+                )
+                
+                if result_pside == -1:
+                    log.warning("P-side trim calibration was aborted or failed")
+                    return
+            else:
+                log.warning(f"Tab {tab_id}: No valid P-side SMX elements for set_trim_calib")
+            
+            info = "<<-- FINISHED SETTING THE CALIBRATION TRIM"
+            self.df.write_log_file(self.vd.module_dir, self.vd.module_sn, info)
+            
+        except Exception as e:
+            log.error(f"Tab {tab_id}: Error in set_trim_calib: {str(e)}")
+            raise
+        
+    def run_check_trim_test(self, accumulated_progress, step_percentage, check_continue, update_progress, worker_instance, tab_id, pscan_dir):
+        log.info("-------------- MEASURING ENC AND CHECKING CALIBRATION ------------------------- ")
+        info = "--> MEASURING ENC AND CHECKING CALIBRATION"
+        self.df.write_log_file(self.vd.module_dir, self.vd.module_sn, info)
+        
+        try:
+            selected_smx_l_nside, selected_smx_l_pside, valid_nside_indexes, valid_pside_indexes = self.get_valid_selections(tab_id)
+            
+            total_asics = 0
+            if selected_smx_l_nside:
+                total_asics += len([smx for smx in selected_smx_l_nside if smx.address in valid_nside_indexes])
+            if selected_smx_l_pside:
+                total_asics += len([smx for smx in selected_smx_l_pside if smx.address in valid_pside_indexes])
+            
+            current_asic = 0
+            
+            def asic_progress_callback(base_prog, current_iter, total_iter):
+                if worker_instance and total_asics > 0:
+                    asic_progress = (current_asic + (current_iter / total_iter)) / total_asics
+                    step_progress = asic_progress * step_percentage
+                    total_progress = accumulated_progress + step_progress
+                    
+                    worker_instance.update_granular_progress(
+                        accumulated_progress, 
+                        int(asic_progress * 100), 
+                        100, 
+                        "check_trim"
+                    )
+                    
+                    log.debug(f"Check Trim Progress: {current_asic}/{total_asics}, Iter: {current_iter}/{total_iter}, Total: {total_progress:.1f}%")
+            
+            if selected_smx_l_nside:
+                log.info(f"Processing N-side ENC & calibration check: {len([smx for smx in selected_smx_l_nside if smx.address in valid_nside_indexes])} ASICs")
+                result_nside = self.of.check_trim(
+                    selected_smx_l_nside, pscan_dir, 'N', self.feb_nside, valid_nside_indexes, 
+                    self.vd.disc_list, self.vd.vp_min, self.vd.vp_max, 
+                    self.vd.vp_step, self.vd.npulses, 
+                    check_continue=check_continue,
+                    progress_callback=asic_progress_callback,
+                    base_progress=accumulated_progress
+                )
+                current_asic += len([smx for smx in selected_smx_l_nside if smx.address in valid_nside_indexes])
+                
+                if result_nside == -1:
+                    log.warning("N-side ENC & calibration check was aborted or failed")
+                    return
+            else:
+                log.warning(f"Tab {tab_id}: No valid N-side SMX elements for check_trim")
+            
+            if selected_smx_l_pside:
+                log.info(f"Processing P-side ENC & calibration check: {len([smx for smx in selected_smx_l_pside if smx.address in valid_pside_indexes])} ASICs")
+                result_pside = self.of.check_trim(
+                    selected_smx_l_pside, pscan_dir, 'P', self.feb_pside, valid_pside_indexes, 
+                    self.vd.disc_list, self.vd.vp_min, self.vd.vp_max, 
+                    self.vd.vp_step, self.vd.npulses, 
+                    check_continue=check_continue,
+                    progress_callback=asic_progress_callback,
+                    base_progress=accumulated_progress
+                )
+                
+                if result_pside == -1:
+                    log.warning("P-side ENC & calibration check was aborted or failed")
+                    return
+            else:
+                log.warning(f"Tab {tab_id}: No valid P-side SMX elements for check_trim")
+            
+            info = "<<-- FINISHED MEASURING ENC AND CHECKING CALIBRATION"
+            self.df.write_log_file(self.vd.module_dir, self.vd.module_sn, info)
+            
+        except Exception as e:
+            log.error(f"Tab {tab_id}: Error in check_trim: {str(e)}")
+            raise
+        
+    def run_get_trim_test(self, accumulated_progress, step_percentage, check_continue, update_progress, worker_instance, tab_id, trim_dir):
+        log.info("-------------- CALIBRATING THE MODULE ------------------------- ")
+        info = "-->> CALIBRATING THE MODULE"
+        self.df.write_log_file(self.vd.module_dir, self.vd.module_sn, info)
+        
+        try:
+            selected_smx_l_nside, selected_smx_l_pside, valid_nside_indexes, valid_pside_indexes = self.get_valid_selections(tab_id)
+            
+            total_asics = 0
+            if selected_smx_l_nside:
+                total_asics += len([smx for smx in selected_smx_l_nside if smx.address in valid_nside_indexes])
+            if selected_smx_l_pside:
+                total_asics += len([smx for smx in selected_smx_l_pside if smx.address in valid_pside_indexes])
+            
+            current_asic = 0
+            
+            def asic_progress_callback(base_prog, current_iter, total_iter, sub_operation=""):
+                if worker_instance and total_asics > 0:
+                    asic_progress = (current_asic + (current_iter / total_iter)) / total_asics
+                    step_progress = asic_progress * step_percentage
+                    total_progress = accumulated_progress + step_progress
+                    
+                    worker_instance.update_granular_progress(
+                        accumulated_progress, 
+                        int(asic_progress * 100), 
+                        100, 
+                        "get_trim"
+                    )
+                    
+                    operation_info = f" [{sub_operation}]" if sub_operation else ""
+                    log.debug(f"Calibration Progress{operation_info}: {current_asic}/{total_asics}, Iter: {current_iter}/{total_iter}, Total: {total_progress:.1f}%")
+            
+            if selected_smx_l_nside:
+                log.info(f"Processing N-side calibration: {len([smx for smx in selected_smx_l_nside if smx.address in valid_nside_indexes])} ASICs")
+                result_nside = self.of.calib_FEB(
+                    selected_smx_l_nside, trim_dir, 'N', self.feb_nside, valid_nside_indexes, 
+                    self.vd.npulses, self.vd.amp_cal_min, self.vd.amp_cal_max, 
+                    self.vd.amp_cal_fast, much_mode_on=0, 
+                    check_continue=check_continue,
+                    progress_callback=asic_progress_callback,
+                    base_progress=accumulated_progress
+                )
+                current_asic += len([smx for smx in selected_smx_l_nside if smx.address in valid_nside_indexes])
+                
+                if result_nside == -1:
+                    log.warning("N-side calibration was aborted or failed")
+                    return
+                    
+                if not check_continue():
+                    update_test_label("*** TEST EXECUTION STOPPED ***")
+                    return
+            else:
+                log.warning(f"Tab {tab_id}: No valid N-side SMX elements for get_trim")
+            
+            if selected_smx_l_pside:
+                log.info(f"Processing P-side calibration: {len([smx for smx in selected_smx_l_pside if smx.address in valid_pside_indexes])} ASICs")
+                result_pside = self.of.calib_FEB(
+                    selected_smx_l_pside, trim_dir, 'P', self.feb_pside, valid_pside_indexes, 
+                    self.vd.npulses, self.vd.amp_cal_min, self.vd.amp_cal_max, 
+                    self.vd.amp_cal_fast, much_mode_on=0, 
+                    check_continue=check_continue,
+                    progress_callback=asic_progress_callback,
+                    base_progress=accumulated_progress
+                )
+                
+                if result_pside == -1:
+                    log.warning("P-side calibration was aborted or failed")
+                    return
+            else:
+                log.warning(f"Tab {tab_id}: No valid P-side SMX elements for get_trim")
+            
+            info = "<<-- FINISHED CALIBRATING THE MODULE"
+            self.df.write_log_file(self.vd.module_dir, self.vd.module_sn, info)
+            
+        except Exception as e:
+            log.error(f"Tab {tab_id}: Error in get_trim: {str(e)}")
+            raise
 
     def execute_tests(self, module, sn_nside, sn_pside, slc_nside, slc_pside, emu, tests_values, s_size,
                       s_qgrade, asic_nside_values, asic_pside_values, suid, lv_nside_12_checked,
                       lv_pside_12_checked, lv_nside_18_checked, lv_pside_18_checked, module_files, calib_path,
-                      update_progress, update_test_label, update_emu_values, update_vddm, update_temp,
+                      update_progress, update_test_label, update_emu_values, update_vddm, update_temp, efuse_warning,
                       update_feb_nside, update_feb_pside, update_calib_path, update_save_path, tab_id,
                       check_continue=None, worker_instance=None):
         
@@ -195,20 +409,20 @@ class Main:
                     module_str.clear()
                     nfails+=1       
                 if (nfails ==3):
-                    print("Multiple fails on Writing Module ID. It should contain A or B in the second-to-last position. Please check the Module's information")
+                    log.info(f"Tab {tab_id}: Multiple fails on Writing Module ID. It should contain A or B in the second-to-last position. Please check the Module's information")
                     sys.exit()
                 else:
                     pass
 
             # self.vd.module_dir = vd.module_path + "/" + str(vd.ladder_sn) + "/" + str(module_sn)
             # self.vd.module_sn_tmp = self.df.initWorkingDirectory(self.vd.module_dir, module_sn)
-            print(self.vd.module_dir)
+            log.info(f"Tab {tab_id}: Module directory: {self.vd.module_dir}")
             pscan_dir = self.df.making_pscan_dir(self.vd.module_dir)
             trim_dir = self.df.making_trim_dir(self.vd.module_dir)
             #trim_dir = self.vd.calibration_data_path + "/" + str(self.vd.ladder_sn) + "/" + str(module_sn) + "/trim_files/"
             update_calib_path(self.vd.calibration_data_path + "/" + str(self.vd.ladder_sn) + "/" + str(module_sn) + "/trim_files")
             update_save_path(str(self.vd.ladder_sn) + "/" + str(module_sn))
-            print(trim_dir)
+            log.info(f"Tab {tab_id}: Trim directory: {trim_dir}")
             conn_check_dir = self.df.making_conn_check_dir(self.vd.module_dir)
             # Setting logging directory
             fm.set_logging_details(self.vd.module_dir)
@@ -347,6 +561,34 @@ class Main:
                     # Step 2: -------- Starting with connection and synchronization ----------- 
                     try:
                         # Step 2: -------- Starting with connection and synchronization ----------- 
+                        if lv_nside_12_checked:
+                            v, i = pt.read_one_lv("N", "1.2", emu_id)
+                            
+                            if abs(v) < 0.01 and abs(i) < 0.01:
+                                log.info("Turning ON LV 1.2V for N-side")
+                                self.set_lv_on("N", "1.2", emu_id)
+                        
+                        if lv_nside_18_checked:
+                            v, i = pt.read_one_lv("N", "1.8", emu_id)
+                            
+                            if abs(v) < 0.01 and abs(i) < 0.01:
+                                log.info("Turning ON LV 1.8V for N-side")
+                                self.set_lv_on("N", "1.8", emu_id)
+                            
+                        if lv_pside_12_checked:
+                            v, i = pt.read_one_lv("P", "1.2", emu_id)
+                            
+                            if abs(v) < 0.01 and abs(i) < 0.01:
+                                log.info("Turning ON LV 1.2V for P-side")
+                                self.set_lv_on("P", "1.2", emu_id)
+                            
+                        if lv_pside_18_checked:
+                            v, i = pt.read_one_lv("P", "1.8", emu_id)
+                            
+                            if abs(v) < 0.01 and abs(i) < 0.01:
+                                log.info("Turning ON LV 1.8V for P-side")
+                                self.set_lv_on("P", "1.8", emu_id)
+                        
                         info = "EMU_BOARD_SN: {}".format(emu)
                         self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
                         info = "SENSOR UNIQUE ID: {}".format(suid)
@@ -440,34 +682,6 @@ class Main:
                     info = ""
                     self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
                     
-                    if lv_nside_12_checked:
-                        v, i = pt.read_one_lv("N", "1.2", emu_id)
-                        
-                        if abs(v) < 0.01 and abs(i) < 0.01:
-                            log.info("Turning ON LV 1.2V for N-side")
-                            self.set_lv_on("N", "1.2", emu_id)
-                    
-                    if lv_nside_18_checked:
-                        v, i = pt.read_one_lv("N", "1.8", emu_id)
-                        
-                        if abs(v) < 0.01 and abs(i) < 0.01:
-                            log.info("Turning ON LV 1.8V for N-side")
-                            self.set_lv_on("N", "1.8", emu_id)
-                        
-                    if lv_pside_12_checked:
-                        v, i = pt.read_one_lv("P", "1.2", emu_id)
-                        
-                        if abs(v) < 0.01 and abs(i) < 0.01:
-                            log.info("Turning ON LV 1.2V for P-side")
-                            self.set_lv_on("P", "1.2", emu_id)
-                        
-                    if lv_pside_18_checked:
-                        v, i = pt.read_one_lv("P", "1.8", emu_id)
-                        
-                        if abs(v) < 0.01 and abs(i) < 0.01:
-                            log.info("Turning ON LV 1.8V for P-side")
-                            self.set_lv_on("P", "1.8", emu_id)
-                    
                     if lv_nside_12_checked or lv_nside_18_checked or lv_pside_12_checked or lv_pside_18_checked:
                         log.info("Waiting for voltages to stabilize...")
                         wait_time = 5
@@ -484,7 +698,7 @@ class Main:
                         v18_val = lv_nside_bc[2] if lv_nside_18_checked else -1.0
                         i18_val = lv_nside_bc[3] if lv_nside_18_checked else -1.0
                         
-                        update_feb_nside(v12_val, i12_val, v18_val, i18_val)
+                        update_feb_nside(v12_val, i12_val, v18_val, i18_val, test_step)
                         
                         if lv_nside_12_checked:
                             info = "FEB N-side:\t{}\tLV_1.2_BC_N [V]:\t{}\tI_1.2_BC_N [A]:\t{}".format(self.feb_nside, lv_nside_bc[0], lv_nside_bc[1])
@@ -495,7 +709,7 @@ class Main:
                             self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
                     
                     else:
-                        update_feb_nside(-1.0, -1.0, -1.0, -1.0)
+                        update_feb_nside(-1.0, -1.0, -1.0, -1.0, "")
                         
                     if lv_pside_12_checked or lv_pside_18_checked:
                         info = "LV_BEF_CONFIG_P"
@@ -507,7 +721,7 @@ class Main:
                         v18_val = lv_pside_bc[2] if lv_pside_18_checked else -1.0
                         i18_val = lv_pside_bc[3] if lv_pside_18_checked else -1.0
                         
-                        update_feb_pside(v12_val, i12_val, v18_val, i18_val)
+                        update_feb_pside(v12_val, i12_val, v18_val, i18_val, test_step)
                         
                         if lv_pside_12_checked:
                             info = "FEB P-side:\t{}\tLV_1.2_BC_P [V]:\t{}\tI_1.2_BC_P [A]:\t{}".format(self.feb_pside, lv_pside_bc[0], lv_pside_bc[1])
@@ -518,7 +732,7 @@ class Main:
                             self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
                     
                     else:
-                        update_feb_pside(-1.0, -1.0, -1.0, -1.0)
+                        update_feb_pside(-1.0, -1.0, -1.0, -1.0, "")
                     
                     info = "<<-- FINISHED READING LV VALUES BEFORE CONFIGURATION"
                     self.df.write_log_file(self.vd.module_dir, module_sn, info)
@@ -544,7 +758,7 @@ class Main:
                         self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
                         #time.sleep(10)
                         lv_nside_ac = pt.reading_lv('N', self.vd.emu_channel, read_12v=lv_nside_12_checked, read_18v=lv_nside_18_checked)
-                        update_feb_nside(lv_nside_ac[0], lv_nside_ac[1], lv_nside_ac[2], lv_nside_ac[3])
+                        update_feb_nside(lv_nside_ac[0], lv_nside_ac[1], lv_nside_ac[2], lv_nside_ac[3], test_step)
                         
                         if lv_nside_12_checked:
                             info = "FEB N-side:\t{}\tLV_1.2_AC_N [V]:\t{}\tI_1.2_AC_N [A]:\t{}".format(self.feb_nside, lv_nside_ac[0], lv_nside_ac[1])
@@ -554,13 +768,13 @@ class Main:
                             info = "FEB N-side:\t{}\tLV_1.8_AC_N [V]:\t{}\tI_1.8_AC_N [A]:\t{}".format(self.feb_nside, lv_nside_ac[2], lv_nside_ac[3])
                             self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
                     else:
-                        update_feb_pside(0.0, 0.0, 0.0, 0.0)
+                        update_feb_nside(0.0, 0.0, 0.0, 0.0, "")
                     
                     if lv_pside_12_checked or lv_pside_18_checked:
                         info = "LV_AFT_CONFIG_P"
                         self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
                         lv_pside_ac = pt.reading_lv('P', self.vd.emu_channel, read_12v=lv_pside_12_checked, read_18v=lv_pside_18_checked)
-                        update_feb_pside(lv_pside_ac[0], lv_pside_ac[1], lv_pside_ac[2], lv_pside_ac[3])
+                        update_feb_pside(lv_pside_ac[0], lv_pside_ac[1], lv_pside_ac[2], lv_pside_ac[3], test_step)
                         
                         if lv_pside_12_checked:
                             info = "FEB P-side:\t{}\tLV_1.2_AC_P [V]:\t{}\tI_1.2_AC_P [A]:\t{}".format(self.feb_pside, lv_pside_ac[0], lv_pside_ac[1])
@@ -571,7 +785,7 @@ class Main:
                             self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
                     
                     else:
-                        update_feb_pside(0.0, 0.0, 0.0, 0.0)
+                        update_feb_pside(0.0, 0.0, 0.0, 0.0, "")
                         
                     info = "<<-- FINISHED READING LV VALUES AFTER CONFIGURATION"
                     self.df.write_log_file(self.vd.module_dir, module_sn, info)
@@ -651,12 +865,18 @@ class Main:
                         selected_smx_l_nside, selected_smx_l_pside, valid_nside_indexes, valid_pside_indexes = self.get_valid_selections(tab_id)
                         
                         if selected_smx_l_nside:
-                            self.of.read_asicIDs_FEB(selected_smx_l_nside, 'N', self.feb_nside)
+                            values = self.of.read_asicIDs_FEB(selected_smx_l_nside, 'N', self.feb_nside)
+                            
+                            if values[0] == "DUPLICATES_FOUND":
+                                efuse_warning(values[1], values[2], values[3], values[4])
                         else:
                             log.warning(f"Tab {tab_id}: No valid N-side SMX elements to read")
                             
                         if selected_smx_l_pside:
-                            self.of.read_asicIDs_FEB(selected_smx_l_pside, 'P', self.feb_pside)
+                            values = self.of.read_asicIDs_FEB(selected_smx_l_pside, 'P', self.feb_pside)
+                            
+                            if values[0] == "DUPLICATES_FOUND":
+                                efuse_warning(values[1], values[2], values[3], values[4])
                         else:
                             log.warning(f"Tab {tab_id}: No valid P-side SMX elements to read")
                             
@@ -803,77 +1023,15 @@ class Main:
                         return
 
                 elif (test_step =="get_trim"):
-                    log.info("-------------- CALIBRATING THE MODULE ------------------------- ")
-                    info = "-->> CALIBRATING THE MODULE"
-                    self.df.write_log_file(self.vd.module_dir, module_sn, info)
-                    # Function
-                    # Step 11: ------------------ Calibrating the Module ---------------------
-                    try:
-                        selected_smx_l_nside, selected_smx_l_pside, valid_nside_indexes, valid_pside_indexes = self.get_valid_selections(tab_id)
-                        
-                        if selected_smx_l_nside:
-                            self.of.calib_FEB(
-                                selected_smx_l_nside, trim_dir, 'N', self.feb_nside, valid_nside_indexes, 
-                                self.vd.npulses, self.vd.amp_cal_min, self.vd.amp_cal_max, 
-                                self.vd.amp_cal_fast, much_mode_on=0, check_continue=check_continue
-                            )
-                        else:
-                            log.warning(f"Tab {tab_id}: No valid N-side SMX elements for get_trim")
-                        
-                        if not check_continue():
-                            update_test_label("*** TEST EXECUTION STOPPED ***")
-                            return
-                        
-                        if selected_smx_l_pside:
-                            self.of.calib_FEB(
-                                selected_smx_l_pside, trim_dir, 'P', self.feb_pside, valid_pside_indexes, 
-                                self.vd.npulses, self.vd.amp_cal_min, self.vd.amp_cal_max, 
-                                self.vd.amp_cal_fast, much_mode_on=0, check_continue=check_continue  # Añadir check_continue
-                            )
-                        else:
-                            log.warning(f"Tab {tab_id}: No valid P-side SMX elements for get_trim")
-                        
-                        info = "<<-- FINISHED CALIBRATING THE MODULE"
-                        self.df.write_log_file(self.vd.module_dir, module_sn, info)
-                    except Exception as e:
-                        log.error(f"Tab {tab_id}: Error in get_trim: {str(e)}")
-                    
-                    accumulated_progress += step_percentage
-                    update_progress(accumulated_progress)
-                    
-                    if not check_continue():
-                        update_test_label("*** TEST EXECUTION STOPPED ***")
-                        return
-                        
-                elif (test_step =="set_trim_calib"):
-                    log.info("---------------- SETTING THE CALIBRATION TRIM ----------------------------- ")
-                    info = "--> SETTING THE CALIBRATION TRIM"
-                    self.df.write_log_file(self.vd.module_dir, module_sn, info)
-                    # Function
-                    # Step 12: ----------------- Setting Calibration Trim --------------------
-                    try:
-                        selected_smx_l_nside, selected_smx_l_pside, valid_nside_indexes, valid_pside_indexes = self.get_valid_selections(tab_id)
-                        
-                        if selected_smx_l_nside:
-                            self.of.set_trim_calib(
-                                selected_smx_l_nside, trim_dir, 'N', self.feb_nside, 
-                                valid_nside_indexes, much_mode_on=0, check_continue=check_continue
-                            )
-                        else:
-                            log.warning(f"Tab {tab_id}: No valid N-side SMX elements for set_trim_calib")
-                        
-                        if selected_smx_l_pside:
-                            self.of.set_trim_calib(
-                                selected_smx_l_pside, trim_dir, 'P', self.feb_pside, 
-                                valid_pside_indexes, much_mode_on=0, check_continue=check_continue
-                            )
-                        else:
-                            log.warning(f"Tab {tab_id}: No valid P-side SMX elements for set_trim_calib")
-                        
-                        info = "<<-- FINISHED SETTING THE CALIBRATION TRIM"
-                        self.df.write_log_file(self.vd.module_dir, module_sn, info)
-                    except Exception as e:
-                        log.error(f"Tab {tab_id}: Error in set_trim_calib: {str(e)}")
+                    self.run_get_trim_test(
+                        accumulated_progress, 
+                        step_percentage, 
+                        check_continue, 
+                        update_progress, 
+                        worker_instance, 
+                        tab_id, 
+                        trim_dir
+                    )
                     
                     accumulated_progress += step_percentage
                     update_progress(accumulated_progress)
@@ -883,36 +1041,15 @@ class Main:
                         return
                 
                 elif (test_step =="check_trim"):
-                    log.info("-------------- MEASURING ENC AND CHECKING CALIBRATION ------------------------- ")
-                    info = "--> MEASURING ENC AND CHECKING CALIBRATION"
-                    self.df.write_log_file(self.vd.module_dir, module_sn, info)
-                    # Function
-                    # Step 12: ------------------- ENC & Checking Trim ----------------------- 
-                    try:
-                        selected_smx_l_nside, selected_smx_l_pside, valid_nside_indexes, valid_pside_indexes = self.get_valid_selections(tab_id)
-                        
-                        if selected_smx_l_nside:
-                            self.of.check_trim(
-                                selected_smx_l_nside, pscan_dir, 'N', self.feb_nside, valid_nside_indexes, 
-                                self.vd.disc_list, self.vd.vp_min, self.vd.vp_max, 
-                                self.vd.vp_step, self.vd.npulses, check_continue=check_continue
-                            )
-                        else:
-                            log.warning(f"Tab {tab_id}: No valid N-side SMX elements for check_trim")
-                        
-                        if selected_smx_l_pside:
-                            self.of.check_trim(
-                                selected_smx_l_pside, pscan_dir, 'P', self.feb_pside, valid_pside_indexes, 
-                                self.vd.disc_list, self.vd.vp_min, self.vd.vp_max, 
-                                self.vd.vp_step, self.vd.npulses, check_continue=check_continue
-                            )
-                        else:
-                            log.warning(f"Tab {tab_id}: No valid P-side SMX elements for check_trim")
-                        
-                        info = "<<-- FINISHED MEASURING ENC AND CHECKING CALIBRATION"
-                        self.df.write_log_file(self.vd.module_dir, module_sn, info)
-                    except Exception as e:
-                        log.error(f"Tab {tab_id}: Error in check_trim: {str(e)}")
+                    self.run_check_trim_test(
+                        accumulated_progress, 
+                        step_percentage, 
+                        check_continue, 
+                        update_progress, 
+                        worker_instance, 
+                        tab_id, 
+                        pscan_dir
+                    )
                     
                     accumulated_progress += step_percentage
                     update_progress(accumulated_progress)
