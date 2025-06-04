@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import (QWidget, QLabel, QLineEdit, QComboBox, QFrame,
+from PyQt5.QtWidgets import (QWidget, QLabel, QLineEdit, QComboBox, QFrame, QDialog,
                            QTextEdit, QProgressBar, QPushButton, QCheckBox, QGridLayout,
                            QFileDialog, QMessageBox, QVBoxLayout, QHBoxLayout, QGroupBox)
 from PyQt5.QtCore import Qt, QThread, QSize
@@ -14,6 +14,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 from matplotlib.figure import Figure
 import datetime
 from console_window import ConsoleManager
+from module_scanner import ModuleScanner
 
 class TabInterface(QWidget):
     
@@ -92,7 +93,7 @@ class TabInterface(QWidget):
                 background-color: lavender;
                 border: 1px solid black;
                 border-radius: 5px;
-                margin-top: 10px;
+                margin-top: 15px;
                 font-family: Helvetica;
                 font-size: 14px;
             }
@@ -112,38 +113,63 @@ class TabInterface(QWidget):
         self.sensorqgrade_options = ["A (500V)", "B (350V)", "C (250V)", "D (200V)"]
         
         module_label = QLabel("Module ID:")
-        module_label.setFont(QFont("Helvetica", 11))
+        module_label.setFont(QFont("Helvetica", 10))
         self.module_entry = QLineEdit()
         
         sensor_label = QLabel("SUID:")
-        sensor_label.setFont(QFont("Helvetica", 11))
+        sensor_label.setFont(QFont("Helvetica", 10))
         self.sensor_entry = QLineEdit()
         
         sensorsize_label = QLabel("Sensor size:")
-        sensorsize_label.setFont(QFont("Helvetica", 11))
+        sensorsize_label.setFont(QFont("Helvetica", 10))
         self.sensorsize_combobox = QComboBox()
         self.sensorsize_combobox.addItems(self.sensorsize_options)
         
         sensorqgrade_label = QLabel("Sensor Qgrade:")
-        sensorqgrade_label.setFont(QFont("Helvetica", 11))
+        sensorqgrade_label.setFont(QFont("Helvetica", 10))
         self.sensorqgrade_combobox = QComboBox()
         self.sensorqgrade_combobox.addItems(self.sensorqgrade_options)
         
         febnside_label = QLabel("FEB N-Side ID:")
-        febnside_label.setFont(QFont("Helvetica", 11))
+        febnside_label.setFont(QFont("Helvetica", 10))
         self.febnside_entry = QLineEdit()
         
         febpside_label = QLabel("FEB P-Side ID:")
-        febpside_label.setFont(QFont("Helvetica", 11))
+        febpside_label.setFont(QFont("Helvetica", 10))
         self.febpside_entry = QLineEdit()
         
         hv_nside_label = QLabel("HV N-Side (uA):")
-        hv_nside_label.setFont(QFont("Helvetica", 11))
+        hv_nside_label.setFont(QFont("Helvetica", 10))
         self.hv_nside_entry = QLineEdit()
         
         hv_pside_label = QLabel("HV P-Side (uA):")
-        hv_pside_label.setFont(QFont("Helvetica", 11))
+        hv_pside_label.setFont(QFont("Helvetica", 10))
         self.hv_pside_entry = QLineEdit()
+        
+        button_style = """
+            QPushButton {
+                background-color: #725d91;
+                border-radius: 5px;
+                padding: 5px;
+                color: white;
+            }
+            QPushButton:hover {
+                background-color: #614f7d;
+            }
+            QPushButton:pressed {
+                background-color: #4f4066;
+            }
+            QPushButton:disabled {
+                background-color: #a486d1;
+                color: #a0a0a0;
+            }
+        """
+        
+        scan_button = QPushButton("SCAN")
+        scan_button.setStyleSheet(button_style)
+        scan_button.setFont(QFont("Helvetica", 9))
+        scan_button.setFixedWidth(250)
+        scan_button.clicked.connect(self.open_module_scanner)
         
         row = 0
         for label, widget in [
@@ -164,14 +190,17 @@ class TabInterface(QWidget):
                 border: 1px solid black;
                 border-radius: 0px;
                 padding: 2px;
-                margin-top: 10px;
+                margin-top: 5px;
             """)
             
             widget.setFixedWidth(120)
             
             row += 1
             
+        form_layout.addWidget(scan_button, row, 0, 1, 2, Qt.AlignCenter)
+            
         emu_form = QGroupBox()
+        emu_form.setFixedHeight(100)
         emu_form.setStyleSheet("""
             QGroupBox {
                 background-color: lavender;
@@ -185,7 +214,7 @@ class TabInterface(QWidget):
         emu_options = ["EMU_236", "EMU_238", "EMU_213", "EMU_234"]
         
         emu_label = QLabel("EMU ID:")
-        emu_label.setFont(QFont("Helvetica", 11))
+        emu_label.setFont(QFont("Helvetica", 10))
         self.emu_combobox = QComboBox()
         self.emu_combobox.addItems(emu_options)
         
@@ -198,12 +227,12 @@ class TabInterface(QWidget):
                 self.emu_combobox.setCurrentIndex(3)
         
         emu_v_label = QLabel("EMU_V [V]:")
-        emu_v_label.setFont(QFont("Helvetica", 11))
+        emu_v_label.setFont(QFont("Helvetica", 10))
         self.emu_v_entry = QLineEdit()
         self.emu_v_entry.setReadOnly(True)
         
         emu_i_label = QLabel("EMU_I [A]:")
-        emu_i_label.setFont(QFont("Helvetica", 11))
+        emu_i_label.setFont(QFont("Helvetica", 10))
         self.emu_i_entry = QLineEdit()
         self.emu_i_entry.setReadOnly(True)
         
@@ -235,7 +264,7 @@ class TabInterface(QWidget):
         left_layout.addWidget(emu_form)
         
         tests_group = QGroupBox("TEST_SEQUENCE")
-        tests_group.setFixedHeight(200)
+        tests_group.setFixedHeight(180)
         tests_group.setStyleSheet("""
             QGroupBox {
                 background-color: lavender;
@@ -266,7 +295,7 @@ class TabInterface(QWidget):
             checkbox.setStyleSheet("background-color: lavender; border: none")
             
             label = QLabel(test_name)
-            label.setFont(QFont("Helvetica", 11))
+            label.setFont(QFont("Helvetica", 10))
             
             test_row_layout.addWidget(checkbox)
             test_row_layout.addStretch(1)
@@ -295,25 +324,6 @@ class TabInterface(QWidget):
             padding: 3px;
             border: 1px solid black;
         """)
-        
-        button_style = """
-            QPushButton {
-                background-color: #725d91;
-                border-radius: 5px;
-                padding: 5px;
-                color: white;
-            }
-            QPushButton:hover {
-                background-color: #614f7d;
-            }
-            QPushButton:pressed {
-                background-color: #4f4066;
-            }
-            QPushButton:disabled {
-                background-color: #a486d1;
-                color: #a0a0a0;
-            }
-        """
         
         select_button1 = QPushButton("Browse...")
         select_button1.setStyleSheet(button_style)
@@ -803,6 +813,152 @@ class TabInterface(QWidget):
         main_layout.addWidget(main_container, 0, 0)
         main_layout.addWidget(progress_widget, 1, 0)
         main_layout.addWidget(button_widget, 2, 0)
+        
+    def open_module_scanner(self):
+        try:
+            scanner = ModuleScanner()
+            
+            result = scanner.exec_()
+            
+            print(f"Scanner result: {result}")
+            print(f"QDialog.Accepted = {QDialog.Accepted}")
+                    
+            if result == QDialog.Accepted:
+                self.process_scanner_data(scanner)
+            elif result == QDialog.Rejected:
+                print("User cancelled scanner")
+            else:
+                print(f"Unexpected result: {result}")
+                
+        except Exception as e:
+            print(f"Error opening scanner: {e}")
+            from PyQt5.QtWidgets import QMessageBox
+            QMessageBox.critical(self, "Error", f"Error opening scanner:\n{str(e)}")
+            
+    def determine_feb_suffix(self, feb_sn, feb_type, module_id):
+        try:
+            if not feb_sn or feb_sn == '' or not module_id or module_id == '':
+                return feb_sn
+            
+            clean_sn = feb_sn.strip()
+            
+            if len(clean_sn) > 4 and clean_sn[-1] in ['A', 'B']:
+                clean_sn = clean_sn[:-1]
+            
+            if not (clean_sn.isdigit() and len(clean_sn) == 4):
+                print(f"FEB número inválido: {clean_sn}")
+                return feb_sn
+            
+            module_clean = module_id.strip()
+            if len(module_clean) < 2:
+                print(f"Module ID muy corto: {module_clean}")
+                return feb_sn
+            
+            penultimate_char = module_clean[-2].upper()  # Penúltimo carácter
+            print(f"Module ID: {module_clean}, penúltimo carácter: {penultimate_char}")
+            
+            if penultimate_char == 'A':
+                if feb_type == 'A':  # N-Side
+                    suffix = 'B'
+                elif feb_type == 'B':  # P-Side
+                    suffix = 'A'
+                else:
+                    return feb_sn
+                    
+            elif penultimate_char == 'B':
+                if feb_type == 'A':  # N-Side
+                    suffix = 'A'
+                elif feb_type == 'B':  # P-Side
+                    suffix = 'B'
+                else:
+                    return feb_sn
+            else:
+                return feb_sn
+            
+            result = f"{clean_sn}{suffix}"
+            return result
+            
+        except Exception as e:
+            return feb_sn
+
+    def process_scanner_data(self, scanner):
+        try:
+            updated_fields = []
+            
+            # 1. MODULE ID
+            if scanner.module and scanner.module not in ['Unknown', '']:
+                self.module_entry.setText(scanner.module)
+                updated_fields.append(f"Module ID: {scanner.module}")
+            
+            # 2. SENSOR ID (SUID)
+            if scanner.sensor and scanner.sensor not in ['Unknown', '']:
+                self.sensor_entry.setText(scanner.sensor)
+                updated_fields.append(f"Sensor ID: {scanner.sensor}")
+            
+            # 3. SENSOR SIZE
+            if scanner.size and scanner.size not in ['Unknown', '', None]:
+                size_mapping = {
+                    '62x22': '22 mm',
+                    '62x42': '42 mm', 
+                    '62x62': '62 mm',
+                    '62x124': '124 mm',
+                    # Alternative formats
+                    '22': '22 mm',
+                    '42': '42 mm',
+                    '62': '62 mm', 
+                    '124': '124 mm'
+                }
+                
+                mapped_size = size_mapping.get(scanner.size)
+                if mapped_size:
+                    index = self.sensorsize_combobox.findText(mapped_size)
+                    if index >= 0:
+                        self.sensorsize_combobox.setCurrentIndex(index)
+                        updated_fields.append(f"Sensor Size: {mapped_size}")
+                    else:
+                        print(f"Size not found: {mapped_size}")
+                else:
+                    print(f"Size not recognized: {scanner.size}")
+            
+            # 4. SENSOR QGRADE
+            if scanner.grade and scanner.grade not in ['Unknown', '', None]:
+                grade_mapping = {
+                    'A': 'A (500V)',
+                    'B': 'B (350V)',
+                    'C': 'C (250V)',
+                    'D': 'D (200V)'
+                }
+                
+                mapped_grade = grade_mapping.get(scanner.grade.upper())
+                if mapped_grade:
+                    index = self.sensorqgrade_combobox.findText(mapped_grade)
+                    if index >= 0:
+                        self.sensorqgrade_combobox.setCurrentIndex(index)
+                        updated_fields.append(f"Sensor Quality Grade: {mapped_grade}")
+                    else:
+                        print(f"Quality grade not found: {mapped_grade}")
+                else:
+                    print(f"Quality grade not recognized: {scanner.grade}")
+            
+            # 5. FEB N-SIDE ID (FEB A)
+            if hasattr(scanner, 'feb_a_sn') and scanner.feb_a_sn and scanner.feb_a_sn != '':
+                feb_a_with_suffix = self.determine_feb_suffix(scanner.feb_a_sn, 'A', scanner.module)
+                self.febnside_entry.setText(feb_a_with_suffix)
+                updated_fields.append(f"FEB N-Side: {feb_a_with_suffix}")
+            
+            # 6. FEB P-SIDE ID (FEB B)
+            if hasattr(scanner, 'feb_b_sn') and scanner.feb_b_sn and scanner.feb_b_sn != '':
+                feb_b_with_suffix = self.determine_feb_suffix(scanner.feb_b_sn, 'B', scanner.module)
+                self.febpside_entry.setText(feb_b_with_suffix)
+                updated_fields.append(f"FEB P-Side: {feb_b_with_suffix}")
+            
+        except Exception as e:
+            print(f"Error procesing scanner data: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            from PyQt5.QtWidgets import QMessageBox
+            QMessageBox.critical(self, "Error", f"Error processing scanner data:\n{str(e)}")
         
     def lv_off_button_clicked(self):
         button = self.sender()
