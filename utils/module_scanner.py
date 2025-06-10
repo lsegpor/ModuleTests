@@ -25,10 +25,10 @@ from loguru import logger
 
 # parts of ST3
 sys.path.append('gui')
-import emu_ladder.python.module_tests.utils.gui_ModuleScanner as ModuleScanner
+import utils.gui_ModuleScanner as ModuleScanner
 
 sys.path.append('lib')
-import emu_ladder.python.module_tests.utils.feb_type_finder as feb_type_finder
+import utils.feb_type_finder as feb_type_finder
 
 class ModuleScanner(QDialog, ModuleScanner.Ui_ModuleScanner):
     """

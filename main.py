@@ -2,13 +2,13 @@ import sys
 sys.path.append('../autogen/agwb/python/')
 sys.path.append('../smx_tester/')
 from smx_tester import *
-from emu_ladder.python.module_tests.functions.config_tests import ConfigTests
-from emu_ladder.python.module_tests.functions.file_management import FileManagement as fm
-from emu_ladder.python.module_tests.functions.operating_functions import OperatingFunctions
-from emu_ladder.python.module_tests.functions.power_tests import PowerTests as pt
-from emu_ladder.python.module_tests.functions.variables_definition import VariablesDefinition
-from emu_ladder.python.module_tests.functions.directory_files import DirectoryFiles
-import emu_ladder.python.module_tests.utils.emu_lock as emu_lock
+from functions.config_tests import ConfigTests
+from functions.file_management import FileManagement as fm
+from functions.operating_functions import OperatingFunctions
+from functions.power_tests import PowerTests as pt
+from functions.variables_definition import VariablesDefinition
+from functions.directory_files import DirectoryFiles
+import utils.emu_lock as emu_lock
 import threading
 
 class Main:
@@ -334,7 +334,7 @@ class Main:
                     return
                     
                 if not check_continue():
-                    update_test_label("*** TEST EXECUTION STOPPED ***")
+                    #update_test_label("*** TEST EXECUTION STOPPED ***")
                     return
             else:
                 log.warning(f"Tab {tab_id}: No valid N-side SMX elements for get_trim")
@@ -366,9 +366,6 @@ class Main:
     def execute_tests(self, module, sn_nside, sn_pside, slc_nside, slc_pside, emu, tests_values, s_size,
                       s_qgrade, asic_nside_values, asic_pside_values, suid, lv_nside_12_checked,
                       lv_pside_12_checked, lv_nside_18_checked, lv_pside_18_checked, module_files, calib_path,
-                      update_progress, update_test_label, update_emu_values, update_vddm, update_temp,
-                      efuse_warning, uplinks_warning, update_feb_nside, update_feb_pside, update_calib_path,
-                      update_save_path, tab_id, check_continue=None, worker_instance=None):
                       update_progress, update_test_label, update_emu_values, update_vddm, update_temp,
                       efuse_warning, uplinks_warning, update_feb_nside, update_feb_pside, update_calib_path,
                       update_save_path, tab_id, check_continue=None, worker_instance=None):
@@ -854,7 +851,7 @@ class Main:
                         self.df.write_log_file(self.vd.module_dir, module_sn, info)
                     except Exception as e:
                         log.error(f"Tab {tab_id}: Error in std_config: {str(e)}")
-                        log.error(f"Exception details: {traceback.format_exc()}")
+                        #log.error(f"Exception details: {traceback.format_exc()}")
                     
                     accumulated_progress += step_percentage
                     update_progress(accumulated_progress)
@@ -1101,7 +1098,7 @@ class Main:
                         if selected_smx_l_nside:
                             self.of.connection_check(
                                 selected_smx_l_nside, conn_check_dir, 'N', self.feb_nside, 
-                                valid_nside_indexes, nloops, self.vd.vref_t_low, check_continue=check_continue
+                                valid_nside_indexes, self.vd.nloops, self.vd.vref_t_low, check_continue=check_continue
                             )
                         else:
                             log.warning(f"Tab {tab_id}: No valid N-side SMX elements for conn_check")
@@ -1109,7 +1106,7 @@ class Main:
                         if selected_smx_l_pside:
                             self.of.connection_check(
                                 selected_smx_l_pside, conn_check_dir, 'P', self.feb_pside, 
-                                valid_pside_indexes, nloops, self.vd.vref_t_low, check_continue=check_continue
+                                valid_pside_indexes, self.vd.nloops, self.vd.vref_t_low, check_continue=check_continue
                             )
                         else:
                             log.warning(f"Tab {tab_id}: No valid P-side SMX elements for conn_check")

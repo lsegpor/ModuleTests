@@ -7,14 +7,14 @@ import sys
 import os
 sys.path.append('../autogen/agwb/python/')
 sys.path.append('../smx_tester/')
-from emu_ladder.python.module_tests.utils.test_worker import TestWorker
+from utils.test_worker import TestWorker
 from smx_tester import *
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolBar
 from matplotlib.figure import Figure
 import datetime
-from emu_ladder.python.module_tests.utils.console_window import ConsoleManager
-from emu_ladder.python.module_tests.utils.module_scanner import ModuleScanner
+from utils.console_window import ConsoleManager
+from utils.module_scanner import ModuleScanner
 
 class TabInterface(QWidget):
     
