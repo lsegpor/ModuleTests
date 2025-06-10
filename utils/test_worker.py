@@ -17,6 +17,7 @@ class TestWorker(QObject):
     calibSignal = pyqtSignal(str)
     savepathSignal = pyqtSignal(str)
     efuseidWarningSignal = pyqtSignal(list, list, str, str)
+    uplinksWarningSignal = pyqtSignal(int)
     finishedSignal = pyqtSignal(bool, str)
     
     def __init__(self, main_logic, params, tab_num):
@@ -137,7 +138,7 @@ class TestWorker(QObject):
         self.log_message(f"Tab {self.tab_num}: Test info set - step_times keys: {list(step_times.keys())}, test_list: {test_list}", "INFO")
         
     def run(self): 
-        from console_widget import UniversalOutputCapture
+        from emu_ladder.python.module_tests.utils.console_widget import UniversalOutputCapture
     
         capture = UniversalOutputCapture(self.tab_num, self.logSignal)
         
@@ -195,6 +196,11 @@ class TestWorker(QObject):
                         return
                     self.efuseidWarningSignal.emit(efuse_str, efuse_int, pol, feb)
                     
+                def uplinks_warning(length):
+                    if self.stop_requested:
+                        return
+                    self.uplinksWarningSignal.emit(length)
+                    
                 def update_feb_nside(v12_val, i12_val, v18_val, i18_val, test):
                     if self.stop_requested:
                         return
@@ -222,8 +228,9 @@ class TestWorker(QObject):
                     test_values, s_size, s_qgrade, asic_nside_values, asic_pside_values, suid,
                     lv_nside_12_checked, lv_pside_12_checked, lv_nside_18_checked, lv_pside_18_checked,
                     module_files, calib_path, update_progress, update_test_label, update_emu_values,
-                    update_vddm, update_temp, efuse_warning, update_feb_nside, update_feb_pside, update_calib_path,
-                    update_save_path, self.tab_num, check_continue, self
+                    update_vddm, update_temp, efuse_warning, uplinks_warning, update_feb_nside,
+                    update_feb_pside, update_calib_path, update_save_path, self.tab_num,
+                    check_continue, self
                 )
                 
                 if self.stop_requested:

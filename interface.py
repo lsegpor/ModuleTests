@@ -5,7 +5,7 @@ import sys
 import multiprocessing
 sys.path.append('../autogen/agwb/python/')
 sys.path.append('../smx_tester/')
-from file_management import FileManagement as fm
+from emu_ladder.python.module_tests.functions.file_management import FileManagement as fm
 from main import Main
 from smx_tester import *
 from tab_interface import TabInterface

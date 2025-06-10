@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 sys.path.append('../../autogen/agwb/python/')
 from smx_tester import *
-from directory_files import DirectoryFiles
+from emu_ladder.python.module_tests.functions.directory_files import DirectoryFiles
 import multiprocessing
 import time
 import os

@@ -7,14 +7,14 @@ import sys
 import os
 sys.path.append('../autogen/agwb/python/')
 sys.path.append('../smx_tester/')
-from test_worker import TestWorker
+from emu_ladder.python.module_tests.utils.test_worker import TestWorker
 from smx_tester import *
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolBar
 from matplotlib.figure import Figure
 import datetime
-from console_window import ConsoleManager
-from module_scanner import ModuleScanner
+from emu_ladder.python.module_tests.utils.console_window import ConsoleManager
+from emu_ladder.python.module_tests.utils.module_scanner import ModuleScanner
 
 class TabInterface(QWidget):
     
@@ -643,7 +643,7 @@ class TabInterface(QWidget):
         feb_lv_layout.setHorizontalSpacing(15)
         
         sides = ["N-Side:", "P-Side:"]
-        header_labels = ["LDO 1,2V", "LDO 1,8V"]
+        header_labels = ["LDO 1.2V", "LDO 1.8V"]
         self.nside_entries = []
         self.pside_entries = []
         self.lv_checkboxes = []
@@ -669,7 +669,7 @@ class TabInterface(QWidget):
                 lv_on_button.setStyleSheet(button_style)
                 
                 side_type = "N" if side_name == "N-Side:" else "P"
-                volt_type = "1.2" if "1,2V" in volt_name else "1.8"
+                volt_type = "1.2" if "1.2V" in volt_name else "1.8"
                 
                 lv_off_button.setProperty("side_type", side_type)
                 lv_off_button.setProperty("volt_type", volt_type)
@@ -722,7 +722,7 @@ class TabInterface(QWidget):
                 feb_lv_layout.addWidget(voltage_group, side_idx, volt_idx)
                 
                 if side_name == "N-Side:":
-                    if volt_name == "LDO 1,2V":
+                    if volt_name == "LDO 1.2V":
                         self.nside_entries.append(voltage_entry)
                         self.nside_entries.append(current_entry)
                         self.check_lv_nside_12 = checkbox
@@ -731,7 +731,7 @@ class TabInterface(QWidget):
                         self.nside_entries.append(current_entry)
                         self.check_lv_nside_18 = checkbox
                 else:
-                    if volt_name == "LDO 1,2V":
+                    if volt_name == "LDO 1.2V":
                         self.pside_entries.append(voltage_entry)
                         self.pside_entries.append(current_entry)
                         self.check_lv_pside_12 = checkbox
@@ -1098,6 +1098,27 @@ class TabInterface(QWidget):
     def save_figure_pside(self):
         self.active_canvas = self.canvas_pside
         self.save_figure()
+        
+    def uplinks_length_warning(self, length):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Warning)
+        msg.setWindowTitle("Uplinks list length warning")
+        msg.setText(f"The uplinks are not 16.")
+        
+        warning_text = f"Not enough or too much uplinks, length: {length}\n\n"
+        warning_text += "\nPlease check in the data cables:\n"
+        warning_text += "• Connection\n"
+        warning_text += "• Conditions\n"
+        warning_text += "• Status\n"
+        warning_text += "Tests will continue, but this may cause issues.\n"
+        warning_text += "Consider investigating further."
+        
+        msg.setInformativeText(warning_text)
+        
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.setDefaultButton(QMessageBox.Ok)
+        msg.setWindowModality(Qt.ApplicationModal)
+        msg.exec_()
         
     def show_efuse_duplicate_warning(self, duplicate_str_details, duplicate_int_details, pol_str, feb_type):
         msg = QMessageBox()
@@ -1791,6 +1812,7 @@ class TabInterface(QWidget):
         self.worker.vddmSignal.connect(self.update_vddm_plot)
         self.worker.tempSignal.connect(self.update_temp_checkboxes)
         self.worker.efuseidWarningSignal.connect(self.show_efuse_duplicate_warning)
+        self.worker.uplinksWarningSignal.connect(self.uplinks_length_warning)
         self.worker.febnsideSignal.connect(self.update_feb_nside)
         self.worker.febpsideSignal.connect(self.update_feb_pside)
         self.worker.calibSignal.connect(self.update_calib_path)
