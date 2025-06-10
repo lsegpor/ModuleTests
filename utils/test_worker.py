@@ -146,8 +146,6 @@ class TestWorker(QObject):
             try:
                 self.log_message(f"Starting test execution for Setup {self.tab_num}", "INFO")
                 
-                main_instance = self.main
-                
                 if self.stop_requested:
                     self.finishedSignal.emit(False, "Tests stopped by user")
                     return
