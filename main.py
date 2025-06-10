@@ -2,16 +2,14 @@ import sys
 sys.path.append('../autogen/agwb/python/')
 sys.path.append('../smx_tester/')
 from smx_tester import *
-from config_tests import ConfigTests
-from file_management import FileManagement as fm
-from operating_functions import OperatingFunctions
-from power_tests import PowerTests as pt
-from variables_definition import VariablesDefinition
-from directory_files import DirectoryFiles
-import emu_lock
+from functions.config_tests import ConfigTests
+from functions.file_management import FileManagement as fm
+from functions.operating_functions import OperatingFunctions
+from functions.power_tests import PowerTests as pt
+from functions.variables_definition import VariablesDefinition
+from functions.directory_files import DirectoryFiles
+import utils.emu_lock as emu_lock
 import threading
-
-
 
 class Main:
 
@@ -368,9 +366,9 @@ class Main:
     def execute_tests(self, module, sn_nside, sn_pside, slc_nside, slc_pside, emu, tests_values, s_size,
                       s_qgrade, asic_nside_values, asic_pside_values, suid, lv_nside_12_checked,
                       lv_pside_12_checked, lv_nside_18_checked, lv_pside_18_checked, module_files, calib_path,
-                      update_progress, update_test_label, update_emu_values, update_vddm, update_temp, efuse_warning,
-                      update_feb_nside, update_feb_pside, update_calib_path, update_save_path, tab_id,
-                      check_continue=None, worker_instance=None):
+                      update_progress, update_test_label, update_emu_values, update_vddm, update_temp,
+                      efuse_warning, uplinks_warning, update_feb_nside, update_feb_pside, update_calib_path,
+                      update_save_path, tab_id, check_continue=None, worker_instance=None):
         
         if not self._execute_lock.acquire(blocking=False):
             raise Exception(f"Another test is already running in this tab (Tab {tab_id})")
@@ -595,7 +593,7 @@ class Main:
                         self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
                         
                         log.info(f"Tab {tab_id}: Starting general_sync with emu={emu}, active_downlinks={active_downlinks}")
-                        smx_l = self.ct.general_sync(emu, active_downlinks, check_continue=check_continue)
+                        smx_l, uplink_list = self.ct.general_sync(emu, active_downlinks, check_continue=check_continue)
                         log.info(f"Tab {tab_id}: Completed general_sync, got smx_l of length {len(smx_l) if smx_l else 0}")
                         
                         # 2.1 Determining the number of ASICs per side
@@ -625,6 +623,12 @@ class Main:
                         else:
                             info = "DWN_LINK_P: -1"
                         self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
+
+                        info = "UPLINK_LIST: {}".format(uplink_list)
+                        self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
+
+                        if uplink_list is not None and len(uplink_list) != 16:
+                            uplinks_warning(len(uplink_list))
                         
                         # 2.3 Distributing the ASICs in arrays according to operational polarity 
                         # Temp: ASICs asigned for module. M0

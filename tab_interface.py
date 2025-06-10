@@ -1098,6 +1098,27 @@ class TabInterface(QWidget):
     def save_figure_pside(self):
         self.active_canvas = self.canvas_pside
         self.save_figure()
+
+    def uplinks_length_warning(self, length):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Warning)
+        msg.setWindowTitle("Uplinks list length warning")
+        msg.setText(f"The uplinks are not 16.")
+        
+        warning_text = f"Not enough or too much uplinks, length: {length}\n\n"
+        warning_text += "\nPlease check in the data cables:\n"
+        warning_text += "• Connection\n"
+        warning_text += "• Conditions\n"
+        warning_text += "• Status\n"
+        warning_text += "Tests will continue, but this may cause issues.\n"
+        warning_text += "Consider investigating further."
+        
+        msg.setInformativeText(warning_text)
+        
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.setDefaultButton(QMessageBox.Ok)
+        msg.setWindowModality(Qt.ApplicationModal)
+        msg.exec_()
         
     def show_efuse_duplicate_warning(self, duplicate_str_details, duplicate_int_details, pol_str, feb_type):
         msg = QMessageBox()
@@ -1791,6 +1812,7 @@ class TabInterface(QWidget):
         self.worker.vddmSignal.connect(self.update_vddm_plot)
         self.worker.tempSignal.connect(self.update_temp_checkboxes)
         self.worker.efuseidWarningSignal.connect(self.show_efuse_duplicate_warning)
+        self.worker.uplinksWarningSignal.connect(self.uplinks_length_warning)
         self.worker.febnsideSignal.connect(self.update_feb_nside)
         self.worker.febpsideSignal.connect(self.update_feb_pside)
         self.worker.calibSignal.connect(self.update_calib_path)

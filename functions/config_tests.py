@@ -103,6 +103,7 @@ class ConfigTests:
 
     def general_sync(self, emu, active_downlinks=None, check_continue=None):
         try:
+            final_uplinks = []
             # Validate and ensure emu is a string
             if not isinstance(emu, str):
                 self.log.error(f"emu parameter must be a string, got {type(emu)}: {emu}")
@@ -208,6 +209,7 @@ class ConfigTests:
                 else:
                     se.uplinks = [i for i in se.uplinks if i not in remove_list_23]
                 self.log.info(f"Final List UPLINKS SE:\t{se.downlink}\t\t{se.uplinks}  ({len(se.uplinks)})")
+                final_uplinks.extend(se.uplinks)
 
             if check_continue and not check_continue():
                 self.log.info("general_sync aborted before link scan")
@@ -415,7 +417,7 @@ class ConfigTests:
             self.log.info("Number of setup elements: %d", len(setup_elements))
             self.log.info("Number of smx: %d", len(smxes))
             self.log.info("")
-            return smxes
+            return smxes, final_uplinks
             
         except Exception as e:
             self.log.error(f"Error in general_sync: {str(e)}")
