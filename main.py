@@ -11,8 +11,6 @@ from emu_ladder.python.module_tests.functions.directory_files import DirectoryFi
 import emu_ladder.python.module_tests.utils.emu_lock as emu_lock
 import threading
 
-
-
 class Main:
 
     def __init__(self):
@@ -371,6 +369,9 @@ class Main:
                       update_progress, update_test_label, update_emu_values, update_vddm, update_temp,
                       efuse_warning, uplinks_warning, update_feb_nside, update_feb_pside, update_calib_path,
                       update_save_path, tab_id, check_continue=None, worker_instance=None):
+                      update_progress, update_test_label, update_emu_values, update_vddm, update_temp,
+                      efuse_warning, uplinks_warning, update_feb_nside, update_feb_pside, update_calib_path,
+                      update_save_path, tab_id, check_continue=None, worker_instance=None):
         
         if not self._execute_lock.acquire(blocking=False):
             raise Exception(f"Another test is already running in this tab (Tab {tab_id})")
@@ -595,6 +596,7 @@ class Main:
                         self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
                         
                         log.info(f"Tab {tab_id}: Starting general_sync with emu={emu}, active_downlinks={active_downlinks}")
+                        smx_l, uplink_list = self.ct.general_sync(emu, active_downlinks, check_continue=check_continue)
                         smx_l, uplink_list = self.ct.general_sync(emu, active_downlinks, check_continue=check_continue)
                         log.info(f"Tab {tab_id}: Completed general_sync, got smx_l of length {len(smx_l) if smx_l else 0}")
                         

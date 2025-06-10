@@ -193,6 +193,11 @@ class TestWorker(QObject):
                     if self.stop_requested:
                         return
                     self.efuseidWarningSignal.emit(efuse_str, efuse_int, pol, feb)
+
+                def uplinks_warning(length):
+                    if self.stop_requested:
+                        return
+                    self.uplinksWarningSignal.emit(length)
                     
                 def uplinks_warning(length):
                     if self.stop_requested:
