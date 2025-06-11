@@ -862,9 +862,9 @@ class TabInterface(QWidget):
             
             if penultimate_char == 'A':
                 if feb_type == 'A':
-                    suffix = 'B'
-                elif feb_type == 'B':
                     suffix = 'A'
+                elif feb_type == 'B':
+                    suffix = 'B'
                 else:
                     return feb_sn
                     
@@ -943,17 +943,39 @@ class TabInterface(QWidget):
                 else:
                     print(f"Quality grade not recognized: {scanner.grade}")
             
-            # 5. FEB N-SIDE ID (FEB A)
+            # 5. FEB N-SIDE ID
             if hasattr(scanner, 'feb_a_sn') and scanner.feb_a_sn and scanner.feb_a_sn != '':
                 feb_a_with_suffix = self.determine_feb_suffix(scanner.feb_a_sn, 'A', scanner.module)
-                self.febnside_entry.setText(feb_a_with_suffix)
-                updated_fields.append(f"FEB N-Side: {feb_a_with_suffix}")
+                
+                # Determinar si es módulo tipo A o B
+                module_clean = scanner.module.strip()
+                if len(module_clean) >= 2:
+                    penultimate_char = module_clean[-2].upper()
+                    if penultimate_char == 'A':
+                        # Módulo tipo A: FEB A va a P-Side
+                        self.febpside_entry.setText(feb_a_with_suffix)
+                        updated_fields.append(f"FEB P-Side: {feb_a_with_suffix}")
+                    else:
+                        # Módulo tipo B: FEB A va a N-Side
+                        self.febnside_entry.setText(feb_a_with_suffix)
+                        updated_fields.append(f"FEB N-Side: {feb_a_with_suffix}")
             
-            # 6. FEB P-SIDE ID (FEB B)
+            # 6. FEB P-SIDE ID
             if hasattr(scanner, 'feb_b_sn') and scanner.feb_b_sn and scanner.feb_b_sn != '':
                 feb_b_with_suffix = self.determine_feb_suffix(scanner.feb_b_sn, 'B', scanner.module)
-                self.febpside_entry.setText(feb_b_with_suffix)
-                updated_fields.append(f"FEB P-Side: {feb_b_with_suffix}")
+                
+                # Determinar si es módulo tipo A o B
+                module_clean = scanner.module.strip()
+                if len(module_clean) >= 2:
+                    penultimate_char = module_clean[-2].upper()
+                    if penultimate_char == 'A':
+                        # Módulo tipo A: FEB B va a N-Side
+                        self.febnside_entry.setText(feb_b_with_suffix)
+                        updated_fields.append(f"FEB N-Side: {feb_b_with_suffix}")
+                    else:
+                        # Módulo tipo B: FEB B va a P-Side
+                        self.febpside_entry.setText(feb_b_with_suffix)
+                        updated_fields.append(f"FEB P-Side: {feb_b_with_suffix}")
             
         except Exception as e:
             print(f"Error procesing scanner data: {e}")
