@@ -67,7 +67,7 @@ class TabInterface(QWidget):
         left_layout = QVBoxLayout(left_widget)
         
         try:
-            route_image = "/home/cbm/lsegura/emu_ladder/python/module_tests/dinosaur_icon.png"
+            route_image = "/home/cbm/lsegura/emu_ladder/python/module_tests/assets/dinosaur_icon.png"
             pixmap = QPixmap(route_image)
             scaled_pixmap = pixmap.scaled(100, 70, Qt.KeepAspectRatio)
             logo_label = QLabel()
@@ -857,6 +857,9 @@ class TabInterface(QWidget):
             penultimate_char = module_clean[-2].upper()
             print(f"Module ID: {module_clean}, penultimate character: {penultimate_char}")
             
+            last_digit = module_clean[-1]
+            print(f"Module ID: {module_clean}, last digit: {last_digit}")
+            
             if penultimate_char == 'A':
                 if feb_type == 'A':
                     suffix = 'B'
@@ -875,7 +878,7 @@ class TabInterface(QWidget):
             else:
                 return feb_sn
             
-            result = f"{clean_sn}{suffix}"
+            result = f"{clean_sn}{suffix}{last_digit}"
             return result
             
         except Exception as e:

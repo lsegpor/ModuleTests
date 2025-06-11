@@ -4,6 +4,7 @@ import psutil
 import time
 import sys
 import traceback
+from utils.console_widget import UniversalOutputCapture
 
 class TestWorker(QObject):
     progressSignal = pyqtSignal(int)
@@ -138,8 +139,6 @@ class TestWorker(QObject):
         self.log_message(f"Tab {self.tab_num}: Test info set - step_times keys: {list(step_times.keys())}, test_list: {test_list}", "INFO")
         
     def run(self): 
-        from emu_ladder.python.module_tests.utils.console_widget import UniversalOutputCapture
-    
         capture = UniversalOutputCapture(self.tab_num, self.logSignal)
         
         with capture:
