@@ -846,29 +846,29 @@ class TabInterface(QWidget):
                 clean_sn = clean_sn[:-1]
             
             if not (clean_sn.isdigit() and len(clean_sn) == 4):
-                print(f"FEB número inválido: {clean_sn}")
+                print(f"FEB number invalid: {clean_sn}")
                 return feb_sn
             
             module_clean = module_id.strip()
             if len(module_clean) < 2:
-                print(f"Module ID muy corto: {module_clean}")
+                print(f"Module ID too short: {module_clean}")
                 return feb_sn
             
-            penultimate_char = module_clean[-2].upper()  # Penúltimo carácter
-            print(f"Module ID: {module_clean}, penúltimo carácter: {penultimate_char}")
+            penultimate_char = module_clean[-2].upper()
+            print(f"Module ID: {module_clean}, penultimate character: {penultimate_char}")
             
             if penultimate_char == 'A':
-                if feb_type == 'A':  # N-Side
+                if feb_type == 'A':
                     suffix = 'B'
-                elif feb_type == 'B':  # P-Side
+                elif feb_type == 'B':
                     suffix = 'A'
                 else:
                     return feb_sn
                     
             elif penultimate_char == 'B':
-                if feb_type == 'A':  # N-Side
+                if feb_type == 'A':
                     suffix = 'A'
-                elif feb_type == 'B':  # P-Side
+                elif feb_type == 'B':
                     suffix = 'B'
                 else:
                     return feb_sn
