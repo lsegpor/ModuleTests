@@ -1417,40 +1417,55 @@ class TabInterface(QWidget):
             self.check_lv_pside_18.setText("ON")
         else:
             self.check_lv_pside_18.setText("OFF")
+            
+    def clear_checkbox_colors(self):
+        for checkbox in self.checkbox_vars1:
+            checkbox.setStyleSheet("")
+         
+        for checkbox in self.checkbox_vars2:
+            checkbox.setStyleSheet("")
     
-    def update_temp_checkboxes(self, nside_index, nside_values, pside_index, pside_values):
+    def update_temp_checkboxes(self, nside_index, nside_values, pside_index, pside_values, nside_measured_addresses=None, pside_measured_addresses=None):
         temp_values = { "N": nside_values if nside_values is not None else [],
                        "P": pside_values if pside_values is not None else [] }
         
-        if nside_index and temp_values["N"]:
-            for i, temp in zip(nside_index, temp_values["N"]):
-                if i < len(self.checkbox_vars1):
-                    checkbox = self.checkbox_vars1[i]
+        # N-side
+        if nside_index and temp_values["N"] and nside_measured_addresses:
+            for measurement_idx, temp in enumerate(temp_values["N"]):
+                if measurement_idx < len(nside_measured_addresses):
+                    asic_address = nside_measured_addresses[measurement_idx]
                     
-                    if temp >= 60:
-                        color_index = 0
-                    elif temp < 60 and temp >= 40:
-                        color_index = 1
-                    elif temp > 20 and temp < 40:
-                        color_index = 2
-                    else:
-                        color_index = 3
+                    if asic_address < len(self.checkbox_vars1):
+                        checkbox = self.checkbox_vars1[asic_address]
+                        
+                        if temp >= 60:
+                            color_index = 0
+                        elif temp < 60 and temp >= 40:
+                            color_index = 1
+                        elif temp > 20 and temp < 40:
+                            color_index = 2
+                        else:
+                            color_index = 3
+                        
+                        checkbox.setStyleSheet(f"background-color: {self.temp_colors[color_index]}; border-radius: 3px;")
+                        
+        # P-side
+        if pside_index and temp_values["P"] and pside_measured_addresses:
+            for measurement_idx, temp in enumerate(temp_values["P"]):
+                if measurement_idx < len(pside_measured_addresses):
+                    asic_address = pside_measured_addresses[measurement_idx]
                     
-                    checkbox.setStyleSheet(f"background-color: {self.temp_colors[color_index]}; border-radius: 3px;")
-                    
-        if pside_index and temp_values["P"]:
-            for i, temp in zip(pside_index, temp_values["P"]):
-                if i < len(self.checkbox_vars2):
-                    checkbox = self.checkbox_vars2[i]
-                    
-                    if temp > 60:
-                        color_index = 0
-                    elif temp >= 20:
-                        color_index = 1
-                    else:
-                        color_index = 2
-                    
-                    checkbox.setStyleSheet(f"background-color: {self.temp_colors[color_index]}; border-radius: 3px;")
+                    if asic_address < len(self.checkbox_vars2):
+                        checkbox = self.checkbox_vars2[asic_address]
+                        
+                        if temp > 60:
+                            color_index = 0
+                        elif temp >= 20:
+                            color_index = 1
+                        else:
+                            color_index = 2
+                        
+                        checkbox.setStyleSheet(f"background-color: {self.temp_colors[color_index]}; border-radius: 3px;")
                     
     def validate_vddm_values(self, vddm_values):
         critical_values = {"N": [], "P": []}
@@ -1596,21 +1611,27 @@ class TabInterface(QWidget):
         self.stop_tests()
         msg.exec_()
     
-    def update_vddm_plot(self, nside_index, nside_values, pside_index, pside_values):
+    def update_vddm_plot(self, nside_index, nside_values, pside_index, pside_values, nside_measured_addresses=None, pside_measured_addresses=None):
         vddm_values = { "N": nside_values if nside_values is not None else [],
                        "P": pside_values if pside_values is not None else [] }
+
+        if vddm_values.get("N") and nside_measured_addresses:
+            self.nside_datasets.append((nside_measured_addresses, vddm_values.get("N", [])))
+        elif vddm_values.get("N") and nside_index:
+            self.nside_datasets.append((nside_index, vddm_values.get("N", [])))
         
-        validation_result = self.validate_vddm_values(vddm_values)
-        
-        if validation_result != "CRITICAL_ERROR":
-            if vddm_values.get("N") and nside_index:
-                self.nside_datasets.append((nside_index, vddm_values.get("N", [])))
-            
-            if vddm_values.get("P") and pside_index:
-                self.pside_datasets.append((pside_index, vddm_values.get("P", [])))
+        if vddm_values.get("P") and pside_measured_addresses:
+            self.pside_datasets.append((pside_measured_addresses, vddm_values.get("P", [])))
+        elif vddm_values.get("P") and pside_index:
+            self.pside_datasets.append((pside_index, vddm_values.get("P", [])))
         
         self.update_nside_plot()
         self.update_pside_plot()
+        
+        validation_result = self.validate_vddm_values(vddm_values)
+        
+        if validation_result == "CRITICAL_ERROR":
+            pass
         
     def update_nside_plot(self):
         self.ax_nside.clear()
@@ -1645,10 +1666,14 @@ class TabInterface(QWidget):
         for i, (index, values) in enumerate(self.nside_datasets):
             if index and values and len(index) == len(values):
                 marker_idx = i % len(self.markers)
-                self.ax_nside.plot(index, values, 'r-', linewidth=1.5, alpha=0.6)
+                
+                sorted_points = sorted(zip(index, values))
+                sorted_x, sorted_y = zip(*sorted_points) if sorted_points else ([], [])
+                
+                self.ax_nside.plot(sorted_x, sorted_y, 'r-', linewidth=1.5, alpha=0.6)
                 self.ax_nside.scatter(index, values, facecolor='none', edgecolor='red',
-                                      marker=self.markers[marker_idx], s=40, alpha=0.7,
-                                      label=f'Measure {i+1}')
+                                    marker=self.markers[marker_idx], s=40, alpha=0.7,
+                                    label=f'Measure {i+1}')
         
         if len(self.nside_datasets) > 1:
             self.ax_nside.legend(fontsize=7, loc='best')
@@ -1657,7 +1682,7 @@ class TabInterface(QWidget):
         self.ax_nside.grid(True, linestyle='--', alpha=0.5, linewidth=0.5)
         self.figure_nside.tight_layout()
         self.canvas_nside.draw()
-        
+
     def update_pside_plot(self):
         self.ax_pside.clear()
         
@@ -1691,10 +1716,14 @@ class TabInterface(QWidget):
         for i, (index, values) in enumerate(self.pside_datasets):
             if index and values and len(index) == len(values):
                 marker_idx = i % len(self.markers)
-                self.ax_pside.plot(index, values, 'b-', linewidth=1.5, alpha=0.6)
-                self.ax_pside.scatter(index, values, facecolor='none',edgecolor='blue',
-                                      marker=self.markers[marker_idx], s=40, alpha=0.7,
-                                      label=f'Measure {i+1}')
+                
+                sorted_points = sorted(zip(index, values))
+                sorted_x, sorted_y = zip(*sorted_points) if sorted_points else ([], [])
+                
+                self.ax_pside.plot(sorted_x, sorted_y, 'b-', linewidth=1.5, alpha=0.6)
+                self.ax_pside.scatter(index, values, facecolor='none', edgecolor='blue',
+                                    marker=self.markers[marker_idx], s=40, alpha=0.7,
+                                    label=f'Measure {i+1}')
         
         if len(self.pside_datasets) > 1:
             self.ax_pside.legend(fontsize=7, loc='best')
@@ -1857,6 +1886,7 @@ class TabInterface(QWidget):
         self.worker.emuSignal.connect(self.update_emu_values)
         self.worker.vddmSignal.connect(self.update_vddm_plot)
         self.worker.tempSignal.connect(self.update_temp_checkboxes)
+        self.worker.clearSignal.connect(self.clear_checkbox_colors)
         self.worker.efuseidWarningSignal.connect(self.show_efuse_duplicate_warning)
         self.worker.uplinksWarningSignal.connect(self.uplinks_length_warning)
         self.worker.febnsideSignal.connect(self.update_feb_nside)

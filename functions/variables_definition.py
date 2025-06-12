@@ -21,6 +21,7 @@ class VariablesDefinition:
         self.emu_channel = ""
         self.stored_vddm_values = { "N": [], "P": [] }
         self.stored_temp_values = { "N": [], "P": [] }
+        self.measured_asic_addresses = { "N": [], "P": [] }
         self.log = logging.getLogger()
 
     #["EMU_213"]     # List of EMU boards used during the test
@@ -84,11 +85,11 @@ class VariablesDefinition:
     amp_cal_fast = 30
     vref_t = 118                    # Vrf_T value  = 54 in the largest VRef_T range. To detemrine calib par and to calibrate ADC
     # Check Trim Parameters
-    #disc_list = [5,10,16,24,30,31]
-    disc_list = [24,25,27,29,30,31]
+    disc_list = [5,10,16,24,30,31]
+    #disc_list = [24,25,27,29,30,31]
     vp_min = 0
-    vp_max = 100
-    #vp_max = 255
+    #vp_max = 100
+    vp_max = 255
     vp_step = 1
     # Connection check Parameters
     vref_t_low = 102                # Low ADC threshold to count noise hits in the discriminators 
@@ -100,9 +101,9 @@ class VariablesDefinition:
 
     test_list_init = ["power_on_emu", "read_emu", "full_sync","#turn_hv_on", "read_lv_bc"]
     test_list_comm = ["std_config","read_asic_id","set_trim_default", "read_lv_ac", "check_vddm_temp"]
-    test_list_calib = ["set_trim_default", "get_vrefs", "set_calib_par", "get_trim", "read_lv_ac", "check_vddm_temp"]
+    test_list_calib = ["set_trim_default", "get_vrefs", "set_calib_par", "#get_trim", "read_lv_ac", "check_vddm_temp"]
     test_list_check = ["set_trim_calib", "check_trim", "read_lv_ac", "check_vddm_temp", "#turn_hv_off"]
-    test_list_c_check = ["set_trim_calib", "read_lv_ac", "check_vddm_temp", "#turn_hv_off","conn_check"]
+    test_list_c_check = ["#set_trim_calib", "read_lv_ac", "check_vddm_temp", "#turn_hv_off","conn_check"]
     test_list_stress = ["#reg_config_stress", "#iv_meas", "#set_mbias", "long_run"]
     #test_list_rdata = []
     #test_list_sysoff = ["#set_lv_off", "#set_hv_off"]

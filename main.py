@@ -25,6 +25,8 @@ class Main:
         self.feb_pside = "na"
         self.local_cal_asic_list_nside = []
         self.local_cal_asic_list_pside = []
+        self.cal_set_nside = None
+        self.cal_set_pside = None
         
         self._smx_lock = threading.Lock()
         self._execute_lock = threading.Lock()
@@ -104,12 +106,9 @@ class Main:
                     
                     log.debug(f"ASIC Progress: {current_asic}/{total_asics}, Iter: {current_iter}/{total_iter}, Total: {total_progress:.1f}%")
             
-            cal_set_nside = None
-            cal_set_pside = None
-            
             if selected_smx_l_nside:
                 log.info(f"Processing N-side: {len([smx for smx in selected_smx_l_nside if smx.address in valid_nside_indexes])} ASICs")
-                cal_set_nside = self.of.scan_VrefP_N_Thr2glb(
+                self.cal_set_nside = self.of.scan_VrefP_N_Thr2glb(
                     selected_smx_l_nside, 'N', self.feb_nside, valid_nside_indexes, 
                     self.vd.npulses, self.vd.test_ch, self.vd.amp_cal_min, 
                     self.vd.amp_cal_max, self.vd.amp_cal_fast, self.vd.vref_t,
@@ -123,7 +122,7 @@ class Main:
                 
             if selected_smx_l_pside:
                 log.info(f"Processing P-side: {len([smx for smx in selected_smx_l_pside if smx.address in valid_pside_indexes])} ASICs")
-                cal_set_pside = self.of.scan_VrefP_N_Thr2glb(
+                self.cal_set_pside = self.of.scan_VrefP_N_Thr2glb(
                     selected_smx_l_pside, 'P', self.feb_pside, valid_pside_indexes, 
                     self.vd.npulses, self.vd.test_ch, self.vd.amp_cal_min, 
                     self.vd.amp_cal_max, self.vd.amp_cal_fast, self.vd.vref_t,
@@ -366,7 +365,7 @@ class Main:
     def execute_tests(self, module, sn_nside, sn_pside, slc_nside, slc_pside, emu, tests_values, s_size,
                       s_qgrade, asic_nside_values, asic_pside_values, suid, lv_nside_12_checked,
                       lv_pside_12_checked, lv_nside_18_checked, lv_pside_18_checked, module_files, calib_path,
-                      update_progress, update_test_label, update_emu_values, update_vddm, update_temp,
+                      update_progress, update_test_label, update_emu_values, update_vddm, update_temp, clear_temp,
                       efuse_warning, uplinks_warning, update_feb_nside, update_feb_pside, update_calib_path,
                       update_save_path, tab_id, check_continue=None, worker_instance=None):
         
@@ -383,6 +382,8 @@ class Main:
             raise Exception(f"Could not acquire lock for {emu_id} in Tab {tab_id}")
         
         try:
+            clear_temp()
+            
             self.vd.setValues(module, emu, module_files, calib_path)
             self.vd.selected_tests(tests_values)
             self.vd.selected_asics(asic_nside_values, asic_pside_values)
@@ -628,7 +629,7 @@ class Main:
                         info = "UPLINK_LIST: {}".format(uplink_list)
                         self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
                         
-                        if uplink_list is not None and len(uplink_list) != 16:
+                        if uplink_list is not None and len(uplink_list) != 32:
                             uplinks_warning(len(uplink_list))
                         
                         # 2.3 Distributing the ASICs in arrays according to operational polarity 
@@ -957,11 +958,16 @@ class Main:
                         nside_index = [i for i in self.local_cal_asic_list_nside]
                         pside_index = [i for i in self.local_cal_asic_list_pside]
                         
+                        nside_measured_addresses = getattr(self.vd, 'measured_asic_addresses', {}).get("N", [])
+                        pside_measured_addresses = getattr(self.vd, 'measured_asic_addresses', {}).get("P", [])
+                        
                         update_vddm(nside_index, self.vd.stored_vddm_values.get("N", []), 
-                                pside_index, self.vd.stored_vddm_values.get("P", []))
+                                pside_index, self.vd.stored_vddm_values.get("P", []),
+                                nside_measured_addresses, pside_measured_addresses)
                         
                         update_temp(nside_index, self.vd.stored_temp_values.get("N", []), 
-                                pside_index, self.vd.stored_temp_values.get("P", []))
+                                pside_index, self.vd.stored_temp_values.get("P", []),
+                                nside_measured_addresses, pside_measured_addresses)
                         
                         info = "<<-- FINISHED READING VDDM & TEMPERATURE"
                         self.df.write_log_file(self.vd.module_dir, module_sn, info)
@@ -992,26 +998,26 @@ class Main:
                     # Function
                     # Step 10.2: --------- Printing calibration settings ----------------------
                     try:
-                        if 'cal_set_nside' not in locals() or cal_set_nside is None:
+                        if self.cal_set_nside is None:
                             log.warning(f"Tab {tab_id}: Missing cal_set_nside for set_calib_par")
-                            cal_set_nside = []
+                            self.cal_set_nside = []
                         
-                        if 'cal_set_pside' not in locals() or cal_set_pside is None:
+                        if self.cal_set_pside is None:
                             log.warning(f"Tab {tab_id}: Missing cal_set_pside for set_calib_par")
-                            cal_set_pside = []
+                            self.cal_set_pside = []
                         
-                        self.of.print_cal_settings('N', cal_set_nside, valid_nside_indexes)
-                        self.of.print_cal_settings('P', cal_set_pside, valid_pside_indexes)
+                        self.of.print_cal_settings('N', self.cal_set_nside, valid_nside_indexes)
+                        self.of.print_cal_settings('P', self.cal_set_pside, valid_pside_indexes)
                         
                         selected_smx_l_nside, selected_smx_l_pside, valid_nside_indexes, valid_pside_indexes = self.get_valid_selections(tab_id)
                         
-                        if selected_smx_l_nside and cal_set_nside:
-                            self.of.writing_cal_settings(selected_smx_l_nside, 'N', self.feb_nside, cal_set_nside, valid_nside_indexes)
+                        if selected_smx_l_nside and self.cal_set_nside:
+                            self.of.writing_cal_settings(selected_smx_l_nside, 'N', self.feb_nside, self.cal_set_nside, valid_nside_indexes)
                         else:
                             log.warning(f"Tab {tab_id}: No valid N-side elements for set_calib_par")
                         
-                        if selected_smx_l_pside and cal_set_pside:
-                            self.of.writing_cal_settings(selected_smx_l_pside, 'P', self.feb_pside, cal_set_pside, valid_pside_indexes)
+                        if selected_smx_l_pside and self.cal_set_pside:
+                            self.of.writing_cal_settings(selected_smx_l_pside, 'P', self.feb_pside, self.cal_set_pside, valid_pside_indexes)
                         else:
                             log.warning(f"Tab {tab_id}: No valid P-side elements for set_calib_par")
                         
