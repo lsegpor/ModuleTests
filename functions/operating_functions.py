@@ -284,15 +284,20 @@ class OperatingFunctions:
         
         if not hasattr(self.vd, "stored_vddm_values"):
             self.vd.stored_vddm_values = {"N": [], "P": []}
+            
+        if not hasattr(self.vd, "measured_asic_addresses"):
+            self.vd.measured_asic_addresses = {"N": [], "P": []}
         
         if (pol == "N" or pol == "0"):
             pol_str = "N-side"
             info = "VDDM_TEMP_N"
             self.vd.stored_vddm_values["N"] = []
+            self.vd.measured_asic_addresses["N"] = []
         else:
             pol_str = "P-side"
             info = "VDDM_TEMP_P"
             self.vd.stored_vddm_values["P"] = []
+            self.vd.measured_asic_addresses["P"] = []
             
         self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
         header_line  = "FEB-ID_\t\t_POLARITY_\t\t_HW-ADDR_\t_VDDM POTENTIAL [LSB] | [mV]_\t\t_TEMP [mV] | [C]_"    
@@ -312,57 +317,60 @@ class OperatingFunctions:
             if check_continue and not check_continue():
                 log.info(f"read_VDDM_TEMP_FEB aborted at asic_sw={asic_sw}")
                 return -1
-                
-            for smx in smx_l_side:
+            
+            smx = next((s for s in smx_l_side if s.address == asic_sw), None)
+            
+            if smx is not None:
                 if check_continue and not check_continue():
                     log.info(f"read_VDDM_TEMP_FEB aborted at asic_sw={asic_sw}, smx.address={smx.address}")
                     return -1
                     
-                if (smx.address == asic_sw):
-                    if hasattr(self, 'run_with_timeout_and_interrupt'):
-                        log.info(f"Running read_vddm with timeout and interrupt for ASIC {smx.address}")
-                        asic_vddm = self.run_with_timeout_and_interrupt(
-                            smx.read_vddm,
-                            args=(),
-                            check_continue=check_continue,
-                            timeout=None
-                        )
-                        
-                        if asic_vddm is None and check_continue and not check_continue():
-                            log.info(f"read_vddm was interrupted for ASIC {smx.address}")
-                            return -1
-                        
-                        if check_continue and not check_continue():
-                            log.info(f"read_VDDM_TEMP_FEB aborted after read_vddm for ASIC {smx.address}")
-                            return -1
-                            
-                        log.info(f"Running read_temp with timeout and interrupt for ASIC {smx.address}")
-                        asic_temp = self.run_with_timeout_and_interrupt(
-                            smx.read_temp,
-                            args=(),
-                            check_continue=check_continue,
-                            timeout=None
-                        )
-                        
-                        if asic_temp is None and check_continue and not check_continue():
-                            log.info(f"read_temp was interrupted for ASIC {smx.address}")
-                            return -1
-                    else:
-                        asic_vddm = smx.read_vddm()
-                        asic_temp = smx.read_temp()
+                if hasattr(self, 'run_with_timeout_and_interrupt'):
+                    log.info(f"Running read_vddm with timeout and interrupt for ASIC {smx.address}")
+                    asic_vddm = self.run_with_timeout_and_interrupt(
+                        smx.read_vddm,
+                        args=(),
+                        check_continue=check_continue,
+                        timeout=None
+                    )
                     
-                    if pol == "N" or pol == "0":
-                        self.vd.stored_vddm_values["N"].append(asic_vddm[1])
-                        self.vd.stored_temp_values["N"].append(asic_temp[1])
-                    else:
-                        self.vd.stored_vddm_values["P"].append(asic_vddm[1])
-                        self.vd.stored_temp_values["P"].append(asic_temp[1])
+                    if asic_vddm is None and check_continue and not check_continue():
+                        log.info(f"read_vddm was interrupted for ASIC {smx.address}")
+                        return -1
+                    
+                    if check_continue and not check_continue():
+                        log.info(f"read_VDDM_TEMP_FEB aborted after read_vddm for ASIC {smx.address}")
+                        return -1
                         
-                    info = "{} \t\t {} \t\t {} \t\t\t {} \t {:.1f} \t\t\t {:.1f} \t {:.1f}".format(feb_type, pol_str, smx.address, asic_vddm[0], asic_vddm[1], asic_temp[0], asic_temp[1])
-                    self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
-                    log.info(info)
+                    log.info(f"Running read_temp with timeout and interrupt for ASIC {smx.address}")
+                    asic_temp = self.run_with_timeout_and_interrupt(
+                        smx.read_temp,
+                        args=(),
+                        check_continue=check_continue,
+                        timeout=None
+                    )
+                    
+                    if asic_temp is None and check_continue and not check_continue():
+                        log.info(f"read_temp was interrupted for ASIC {smx.address}")
+                        return -1
                 else:
-                    pass
+                    asic_vddm = smx.read_vddm()
+                    asic_temp = smx.read_temp()
+                
+                if pol == "N" or pol == "0":
+                    self.vd.stored_vddm_values["N"].append(asic_vddm[1])
+                    self.vd.stored_temp_values["N"].append(asic_temp[1])
+                    self.vd.measured_asic_addresses["N"].append(asic_sw)  # NUEVO: Rastrear dirección real
+                else:
+                    self.vd.stored_vddm_values["P"].append(asic_vddm[1])
+                    self.vd.stored_temp_values["P"].append(asic_temp[1])
+                    self.vd.measured_asic_addresses["P"].append(asic_sw)  # NUEVO: Rastrear dirección real
+                    
+                info = "{} \t\t {} \t\t {} \t\t\t {} \t {:.1f} \t\t\t {:.1f} \t {:.1f}".format(feb_type, pol_str, smx.address, asic_vddm[0], asic_vddm[1], asic_temp[0], asic_temp[1])
+                self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
+                log.info(info)
+            else:
+                pass
                 
         log.info(f"VDDM VALUES AFTER {pol} READING:")
         log.info(f"Stored N-side values: {self.vd.stored_vddm_values['N']}")

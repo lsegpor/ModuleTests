@@ -4,14 +4,16 @@ import psutil
 import time
 import sys
 import traceback
+from utils.console_widget import UniversalOutputCapture
 
 class TestWorker(QObject):
     progressSignal = pyqtSignal(int)
     infoSignal = pyqtSignal(str)
     logSignal = pyqtSignal(str, str)
     emuSignal = pyqtSignal(float, float)
-    vddmSignal = pyqtSignal(list, list, list, list)
-    tempSignal = pyqtSignal(list, list, list, list)
+    vddmSignal = pyqtSignal(list, list, list, list, list, list)
+    tempSignal = pyqtSignal(list, list, list, list, list, list)
+    clearSignal = pyqtSignal()
     febnsideSignal = pyqtSignal(float, float, float, float, str)
     febpsideSignal = pyqtSignal(float, float, float, float, str)
     calibSignal = pyqtSignal(str)
@@ -138,8 +140,6 @@ class TestWorker(QObject):
         self.log_message(f"Tab {self.tab_num}: Test info set - step_times keys: {list(step_times.keys())}, test_list: {test_list}", "INFO")
         
     def run(self): 
-        from emu_ladder.python.module_tests.utils.console_widget import UniversalOutputCapture
-    
         capture = UniversalOutputCapture(self.tab_num, self.logSignal)
         
         with capture:
@@ -179,15 +179,20 @@ class TestWorker(QObject):
                     self.emuSignal.emit(v_value, i_value)
                     self.log_message(f"EMU Values - V: {v_value}, I: {i_value}", "DEBUG")
                     
-                def update_vddm(n_idx, n_val, p_idx, p_val):
+                def update_vddm(n_idx, n_val, p_idx, p_val, n_mval, p_mval):
                     if self.stop_requested:
                         return
-                    self.vddmSignal.emit(n_idx, n_val, p_idx, p_val)
+                    self.vddmSignal.emit(n_idx, n_val, p_idx, p_val, n_mval, p_mval)
                     
-                def update_temp(n_idx, n_val, p_idx, p_val):
+                def update_temp(n_idx, n_val, p_idx, p_val, n_mval, p_mval):
                     if self.stop_requested:
                         return
-                    self.tempSignal.emit(n_idx, n_val, p_idx, p_val)
+                    self.tempSignal.emit(n_idx, n_val, p_idx, p_val, n_mval, p_mval)
+                    
+                def clear_temp():
+                    if self.stop_requested:
+                        return
+                    self.clearSignal.emit()
                     
                 def efuse_warning(efuse_str, efuse_int, pol, feb):
                     if self.stop_requested:
@@ -231,7 +236,7 @@ class TestWorker(QObject):
                     test_values, s_size, s_qgrade, asic_nside_values, asic_pside_values, suid,
                     lv_nside_12_checked, lv_pside_12_checked, lv_nside_18_checked, lv_pside_18_checked,
                     module_files, calib_path, update_progress, update_test_label, update_emu_values,
-                    update_vddm, update_temp, efuse_warning, uplinks_warning, update_feb_nside,
+                    update_vddm, update_temp, clear_temp, efuse_warning, uplinks_warning, update_feb_nside,
                     update_feb_pside, update_calib_path, update_save_path, self.tab_num,
                     check_continue, self
                 )
