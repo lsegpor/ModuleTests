@@ -143,7 +143,7 @@ def process_p_scan_files(ladder_sn, module_sn, files_idx=None, q_lim=68):
     # Relative route from utils/ to pscanfiles/
     source_dir = os.path.join("..", "..", "..", "..", "..", "..", "cbmsoft", 
                              "emu_test_module_arr", "python", "module_files", 
-                             ladder_sn, module_sn, "pscanfiles")
+                             ladder_sn, module_sn, "pscan_files")
     
     print(f"🔍 DEBUG: Searching in directory: {source_dir}")
     
