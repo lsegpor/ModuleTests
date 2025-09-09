@@ -10,6 +10,7 @@ from functions.variables_definition import VariablesDefinition
 from functions.directory_files import DirectoryFiles
 import utils.emu_lock as emu_lock
 import threading
+from utils.pscan_plot import process_p_scan_files
 
 class Main:
 
@@ -1061,6 +1062,14 @@ class Main:
                         tab_id, 
                         pscan_dir
                     )
+
+                    results = process_p_scan_files(self.vd.ladder_sn, self.vd.module_sn)
+                    
+                    if results is not None:
+                        print(f"Procesamiento exitoso para {self.vd.ladder_sn}/{self.vd.module_sn}")
+                        print(f"Se procesaron {len(results)} archivos")
+                    else:
+                        print(f"Error procesando {self.vd.ladder_sn}/{self.vd.module_sn}")
                     
                     accumulated_progress += step_percentage
                     update_progress(accumulated_progress)

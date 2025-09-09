@@ -139,7 +139,17 @@ def process_channel(df, adc_list, chn):
 
     return results
 
-def process_p_scan_files(source_dir = "sources", files_idx=None, q_lim=68):
+def process_p_scan_files(ladder_sn, module_sn, files_idx=None, q_lim=68):
+    # Relative route from utils/ to pscanfiles/
+    source_dir = os.path.join("..", "..", "..", "..", "..", "..", "cbmsoft", 
+                             "emu_test_module_arr", "python", "module_files", 
+                             ladder_sn, module_sn, "pscanfiles")
+    
+    # Verify the directory exists
+    if not os.path.exists(source_dir):
+        logger.error(f"Directory {source_dir} does not exist")
+        return
+
     files = os.listdir(source_dir)
 
     table_values = []
@@ -149,7 +159,7 @@ def process_p_scan_files(source_dir = "sources", files_idx=None, q_lim=68):
 
     for f_name in files:
 
-        """ Search the numnber of injected pulses in the filename
+        """ Search the number of injected pulses in the filename
             If not found, assume 1 pulse, so the normalization will not change the data
         """
         try:
@@ -251,6 +261,3 @@ def process_p_scan_files(source_dir = "sources", files_idx=None, q_lim=68):
 
     table_labels = ['File', 'Thr (e)', 'Thr_std (e)', 'Gain (e/LSB)', 'Gain_std (e/LSB)', 'ENC (e)', 'ENC_std (e)', 'Q_score', 'Odd_failed', 'Even_failed']
     logger.info(f"Summary:\n{tabulate(table_values, headers=table_labels, tablefmt='simple', floatfmt=".0f")}")
-
-if __name__ == "__main__":
-    process_p_scan_files("sources")
