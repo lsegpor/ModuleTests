@@ -9,10 +9,8 @@ import matplotlib.pyplot as plt
 
 from multiprocessing import Pool, cpu_count, current_process
 
-#import mplhep
-#mplhep.style.use("ATLAS")
-
-plt.style.use('seaborn-v0_8')
+import mplhep
+mplhep.style.use("ATLAS")
 
 from scripts.fit_err_fnc import fit_s_curve
 from scripts.fit_err_fnc import err_func
