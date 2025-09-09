@@ -1,7 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import mplhep
-mplhep.style.use("ATLAS")
+#import mplhep
+#mplhep.style.use("ATLAS")
+
+plt.style.use('seaborn-v0_8')
 
 import logging
 logger = logging.getLogger(__name__)
