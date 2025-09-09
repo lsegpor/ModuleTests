@@ -893,7 +893,7 @@ class TabInterface(QWidget):
         pscan_plot_layout.addWidget(self.canvas_pscan2, 4, 0)
         pscan_plot_layout.addWidget(self.toolbar_pscan2, 5, 0, 1, 3)
 
-        right_layout.addWidget(pscan_plot_group, 1, 0, 1, 3)
+        right_layout.addWidget(pscan_plot_group, 2, 0, 1, 3)
 
         progress_widget = QWidget()
         progress_widget.setStyleSheet("background-color: lavender; border: none;")
