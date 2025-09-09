@@ -656,6 +656,27 @@ class Main:
                                 self.smx_l_nside = []
                             if not hasattr(self, 'smx_l_pside') or self.smx_l_pside is None:
                                 self.smx_l_pside = []
+
+                    print(f"🔍 Iniciando análisis para ladder: {self.vd.ladder_sn}, module: {self.vd.module_sn}")
+
+                    try:
+                        results = process_p_scan_files(self.vd.ladder_sn, self.vd.module_sn)
+                        
+                        if results is not None:
+                            print(f"✅ Procesamiento exitoso para {self.vd.ladder_sn}/{self.vd.module_sn}")
+                            print(f"📊 Se procesaron {len(results)} archivos")
+                            print(f"📋 Primeros resultados: {results[:2] if len(results) > 0 else 'Sin datos'}")
+                        else:
+                            print(f"❌ Error: results es None para {self.vd.ladder_sn}/{self.vd.module_sn}")
+                            print("🔧 Posibles causas:")
+                            print("   - Directorio no existe")
+                            print("   - No hay archivos .txt en el directorio")
+                            print("   - Error en el procesamiento de archivos")
+                            
+                    except Exception as e:
+                        print(f"💥 Excepción durante el procesamiento: {e}")
+                        import traceback
+                        traceback.print_exc()
                     
                     accumulated_progress += step_percentage
                     update_progress(accumulated_progress)
@@ -1062,14 +1083,6 @@ class Main:
                         tab_id, 
                         pscan_dir
                     )
-
-                    results = process_p_scan_files(self.vd.ladder_sn, self.vd.module_sn)
-                    
-                    if results is not None:
-                        print(f"Procesamiento exitoso para {self.vd.ladder_sn}/{self.vd.module_sn}")
-                        print(f"Se procesaron {len(results)} archivos")
-                    else:
-                        print(f"Error procesando {self.vd.ladder_sn}/{self.vd.module_sn}")
                     
                     accumulated_progress += step_percentage
                     update_progress(accumulated_progress)
