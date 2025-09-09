@@ -743,7 +743,7 @@ class TabInterface(QWidget):
         right_layout.addWidget(feb_lv_group, 1, 0)
 
         pscan_plot_group = QGroupBox("Pscan process results")
-        pscan_plot_group.setFixedHeight(500)
+        pscan_plot_group.setFixedHeight(450)
         pscan_plot_group.setStyleSheet("""
             QGroupBox {
                 background-color: lavender;
@@ -763,7 +763,7 @@ class TabInterface(QWidget):
         
         pscan_plot_layout = QGridLayout(pscan_plot_group)
         
-        self.figure_pscan = Figure(figsize=(4, 2), dpi=100)
+        self.figure_pscan = Figure(figsize=(3, 2), dpi=100)
         self.canvas_pscan = FigureCanvas(self.figure_nside)
         self.canvas_pscan.setFixedHeight(170)
         self.ax_pscan = self.figure_pscan.add_subplot(111)
@@ -804,7 +804,7 @@ class TabInterface(QWidget):
                 action.triggered.connect(lambda: self.save_figure_pscan())
                 break
 
-        self.figure_pscan1 = Figure(figsize=(4, 2), dpi=100)
+        self.figure_pscan1 = Figure(figsize=(3, 2), dpi=100)
         self.canvas_pscan1 = FigureCanvas(self.figure_nside)
         self.canvas_pscan1.setFixedHeight(170)
         self.ax_pscan1 = self.figure_pscan1.add_subplot(111)
@@ -845,7 +845,7 @@ class TabInterface(QWidget):
                 action.triggered.connect(lambda: self.save_figure_pscan1())
                 break
 
-        self.figure_pscan2 = Figure(figsize=(4, 2), dpi=100)
+        self.figure_pscan2 = Figure(figsize=(3, 2), dpi=100)
         self.canvas_pscan2 = FigureCanvas(self.figure_nside)
         self.canvas_pscan2.setFixedHeight(170)
         self.ax_pscan2 = self.figure_pscan2.add_subplot(111)
