@@ -657,16 +657,16 @@ class Main:
                             if not hasattr(self, 'smx_l_pside') or self.smx_l_pside is None:
                                 self.smx_l_pside = []
 
-                    print(f"🔍 Iniciando análisis para ladder: {self.vd.ladder_sn}, module: {self.vd.module_sn}")
+                    print(f"🔍 Initializing analysis for ladder: {self.vd.ladder_sn}, module: {self.vd.module_sn}")
 
                     results = process_p_scan_files(self.vd.ladder_sn, self.vd.module_sn)
 
                     if results is not None:
-                        print(f"Procesamiento exitoso para {self.vd.ladder_sn}/{self.vd.module_sn}")
-                        print(f"Se procesaron {len(results)} archivos")
+                        print(f"Successful processing for {self.vd.ladder_sn}/{self.vd.module_sn}")
+                        print(f"Processed {len(results)} files")
                     else:
-                        print(f"Error procesando {self.vd.ladder_sn}/{self.vd.module_sn}")
-                    
+                        print(f"Error processing {self.vd.ladder_sn}/{self.vd.module_sn}")
+
                     accumulated_progress += step_percentage
                     update_progress(accumulated_progress)
                 

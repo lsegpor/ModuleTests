@@ -197,9 +197,10 @@ def process_p_scan_files(ladder_sn, module_sn, files_idx=None, q_lim=68):
         try:
             with open(file_path, "r") as f:
                 first_line = f.readline().strip()
-                match = re.search(r"\[(.*?)\]", first_line)
+                #match = re.search(r"\[(.*?)\]", first_line)
+                match = re.search(r"DISC_LIST:\s*\[(.*?)\]", first_line)
                 if not match:
-                    raise ValueError(f"No ADC list found in {file_path}")
+                    raise ValueError(f"No DISC_LIST found in {file_path}")
                 adc_list = [int(a) for a in match.group(1).split(",")]
         except Exception as e:
             logger.error(f"{e}")
@@ -280,3 +281,5 @@ def process_p_scan_files(ladder_sn, module_sn, files_idx=None, q_lim=68):
 
     table_labels = ['File', 'Thr (e)', 'Thr_std (e)', 'Gain (e/LSB)', 'Gain_std (e/LSB)', 'ENC (e)', 'ENC_std (e)', 'Q_score', 'Odd_failed', 'Even_failed']
     logger.info(f"Summary:\n{tabulate(table_values, headers=table_labels, tablefmt='simple', floatfmt='.0f')}")
+
+    return table_values
