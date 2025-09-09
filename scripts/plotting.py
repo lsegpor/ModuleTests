@@ -11,11 +11,16 @@ def plot_histogram(x, x_label, y_label, axs=None):
         axs = plt.gca()
 
     x_range = np.max(x) - np.min(x)
-    h_mean = np.histogram(x, bins=20, range=[np.min(x) - 0.3*x_range,np.max(x) + 0.3*x_range])
-    mplhep.histplot(h_mean, ax=axs)
+    
+    axs.hist(x, bins=20, range=[np.min(x) - 0.3*x_range, np.max(x) + 0.3*x_range], 
+             alpha=0.7, edgecolor='black')
+    
     axs.set_xlabel(x_label)
     axs.set_ylabel(y_label)
-    axs.grid(True)
+    axs.grid(True, alpha=0.3)
+    
+    h_mean = np.histogram(x, bins=20, range=[np.min(x) - 0.3*x_range, np.max(x) + 0.3*x_range])
+
     return h_mean
 
 from datetime import datetime
@@ -64,7 +69,7 @@ def plot_s_curve(chn, adc_list, result, data_frame):
     for adc_idx, adc in enumerate(adc_list):
         df_channel = data_frame[data_frame["CH_value"] == chn]
         if df_channel.empty:
-            return None  # in case of missing channels
+            return None
 
         x = df_channel['VP_value'].to_numpy()
         y = df_channel[f"ADC_{adc}"].to_numpy()
@@ -74,11 +79,14 @@ def plot_s_curve(chn, adc_list, result, data_frame):
         x_edges = [center - 0.5*dx for center in x]
         x_edges.append(x_edges[-1]+dx)
 
-        mplhep.histplot(y,x_edges, color='tab:blue', edges=False)
-        mplhep.label.exp_label(exp="CBM", llabel="", rlabel=f"CHN_{chn} : {adc_list}")
+        plt.hist(x, weights=y, bins=x_edges, color='tab:blue', 
+                histtype='step', linewidth=1.5, alpha=0.8)
+        
+        plt.title(f"CBM - CHN_{chn} : {adc_list}")
+        
         plt.xlabel("Pulse amplitude [LSB]")
         plt.ylabel(f"Counts")
-        plt.grid(True)
+        plt.grid(True, alpha=0.3)
 
         if result[adc] is not None:
             s0, x0, a0, sg_err, x0_err, a0_err, chi2 = result[adc]
@@ -89,11 +97,11 @@ def plot_s_curve(chn, adc_list, result, data_frame):
             if x0_err / x0 > 0.1:
                 logger.warning(f"Warning: Large x0 error for channel {chn}, ADC {adc}: {x0_err/x0:.2f}")
 
-            plt.plot(x, err_func(x,s0,x0, a0), color='tab:red')
+            plt.plot(x, err_func(x,s0,x0, a0), color='tab:red', linewidth=2)
 
         plt.text(
-            0.75*(x[-1]-x[0]), 0.20 + 0.8*adc_idx/n_of_adc, f"Sigma: {s0:.3f}\nMean: {x0:.3f}\nChi2_red: {chi2:.5f}\n",
-            # transform=plt.gca().transAxes,   # relative coords (0,0) = bottom-left
+            0.75*(x[-1]-x[0]), 0.20 + 0.8*adc_idx/n_of_adc, 
+            f"Sigma: {s0:.3f}\nMean: {x0:.3f}\nChi2_red: {chi2:.5f}\n",
             fontsize=8, color="gray", alpha=0.7,
             ha="center", va="top"
         )
@@ -104,6 +112,7 @@ def plot_s_curve(chn, adc_list, result, data_frame):
         ha="left", va="bottom",
         fontsize=8, color="gray"
     )
+    plt.tight_layout()
     plt.savefig(f"images/chn_{chn}_s_curve_fit.png")
     plt.close()
 
