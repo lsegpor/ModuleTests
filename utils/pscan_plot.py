@@ -143,38 +143,27 @@ def process_p_scan_files(ladder_sn, module_sn, files_idx=None, q_lim=68):
     # Relative route from utils/ to pscan_files/
     source_dir = f"/home/cbm/cbmsoft/emu_test_module_arr/python/module_files/{ladder_sn}/{module_sn}/pscan_files"
     
-    print(f"🔍 DEBUG: Searching in directory: {source_dir}")
-    
     # Verify the directory exists
     if not os.path.exists(source_dir):
-        print(f"❌ DEBUG: Directory {source_dir} does not exist for ladder {ladder_sn}, module {module_sn}")
         logger.error(f"Directory {source_dir} does not exist")
         return
-    
-    print(f"✅ DEBUG: Directory found")
 
     files = os.listdir(source_dir)
-    print(f"📁 DEBUG: {len(files)} files found in total")
+    logger.debug(f"📁 DEBUG: {len(files)} files found in total")
 
     txt_files = [f for f in files if f.endswith('.txt')]
-    print(f"📝 DEBUG: {len(txt_files)} .txt files found")
-    
+    logger.debug(f"📝 DEBUG: {len(txt_files)} .txt files found")
+
     if not txt_files:
-        print(f"⚠️ DEBUG: No .txt files found in {source_dir}")
+        logger.warning(f"⚠️ DEBUG: No .txt files found in {source_dir}")
         return None
-
-    # Show some example files
-    for i, f in enumerate(txt_files[:3]):
-        print(f"📋 DEBUG: File {i+1}: {f}")
-
+    
     table_values = []
 
     if files_idx is not None:
         files = [files[idx] for idx in files_idx]
-        print(f"🎯 DEBUG: Processing only selected files: {files_idx}")
     else:
         files = txt_files
-        print(f"🎯 DEBUG: Processing all .txt files")
 
     for f_name in files:
 

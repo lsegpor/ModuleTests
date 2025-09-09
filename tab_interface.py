@@ -741,7 +741,74 @@ class TabInterface(QWidget):
                         self.check_lv_pside_18 = checkbox
         
         right_layout.addWidget(feb_lv_group, 1, 0)
+
+        pscan_plot_group = QGroupBox("VDDM (mV)")
+        pscan_plot_group.setFixedHeight(450)
+        pscan_plot_group.setStyleSheet("""
+            QGroupBox {
+                background-color: lavender;
+                border: 1px solid black;
+                border-radius: 5px;
+                margin-bottom: 10px;
+                font-family: Helvetica;
+                font-size: 14px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top center;
+                padding: 0 5px;
+                background-color: lavender;
+            }
+        """)
         
+        pscan_plot_layout = QGridLayout(pscan_plot_group)
+        
+        self.figure_pscan = Figure(figsize=(4, 2), dpi=100)
+        self.canvas_pscan = FigureCanvas(self.figure_nside)
+        self.canvas_pscan.setFixedHeight(170)
+        self.ax_pscan = self.figure_pscan.add_subplot(111)
+        
+        self.ax_pscan.set_xlim(-0.5, 7.5)
+        self.ax_pscan.set_ylim(1000, 1400)
+        self.ax_pscan.set_xticks(range(8))
+        self.ax_pscan.set_xticklabels([str(i) for i in range(8)])
+        self.ax_pscan.set_title('Pscan', fontsize=9)
+        self.ax_pscan.scatter([-1], [0], alpha=0)
+        self.ax_pscan.xaxis.label.set_fontsize(8)
+        self.ax_pscan.yaxis.label.set_fontsize(8)
+        self.ax_pscan.tick_params(axis='both', which='major', labelsize=7)
+        self.ax_pscan.grid(True, linestyle='--', alpha=0.5, linewidth=0.5)
+        self.figure_pscan.tight_layout()
+
+        self.toolbar_pscan = NavigationToolBar(self.canvas_pscan, self, coordinates=False)
+        self.toolbar_pscan.setFixedHeight(20)
+        self.toolbar_pscan.setIconSize(QSize(15, 15))
+        self.toolbar_pscan.layout().setSpacing(1)
+        self.toolbar_pscan.setStyleSheet("""
+            QToolBar {
+                spacing: 10px;
+                padding: 0px;
+                background-color: lavender;
+            }
+            QToolButton {
+                padding: 1px;
+                margin-left: 9px;
+                margin-right: 9px;
+                background-color: white;
+            }
+        """)
+
+        for action in self.toolbar_pscan.actions():
+            if action.text() == 'Save':
+                action.triggered.disconnect()
+                action.triggered.connect(lambda: self.save_figure_pscan())
+                break
+
+        pscan_plot_layout.addWidget(self.canvas_pscan, 0, 0)
+        pscan_plot_layout.addWidget(self.toolbar_pscan, 1, 0, 1, 3)
+
+        right_layout.addWidget(pscan_plot_group, 1, 0, 1, 3)
+
         progress_widget = QWidget()
         progress_widget.setStyleSheet("background-color: lavender; border: none;")
         progress_layout = QVBoxLayout(progress_widget)
