@@ -659,24 +659,43 @@ class Main:
 
                     print(f"🔍 Iniciando análisis para ladder: {self.vd.ladder_sn}, module: {self.vd.module_sn}")
 
-                    try:
-                        results = process_p_scan_files(self.vd.ladder_sn, self.vd.module_sn)
-                        
-                        if results is not None:
-                            print(f"✅ Procesamiento exitoso para {self.vd.ladder_sn}/{self.vd.module_sn}")
-                            print(f"📊 Se procesaron {len(results)} archivos")
-                            print(f"📋 Primeros resultados: {results[:2] if len(results) > 0 else 'Sin datos'}")
+                    # Debug del directorio
+                    import os
+
+                    # Construir la ruta esperada
+                    expected_path = os.path.join("..", "..", "..", "..", "..", "cbmsoft", 
+                                                "emu_test_module_arr", "python", "module_files", 
+                                                self.vd.ladder_sn, self.vd.module_sn, "pscanfiles")
+
+                    print(f"🔍 Verificando ruta: {expected_path}")
+                    print(f"📁 ¿Directorio existe?: {os.path.exists(expected_path)}")
+
+                    if os.path.exists(expected_path):
+                        files = os.listdir(expected_path)
+                        txt_files = [f for f in files if f.endswith('.txt')]
+                        print(f"📄 Archivos totales: {len(files)}")
+                        print(f"📝 Archivos .txt: {len(txt_files)}")
+                        if txt_files:
+                            print(f"📋 Primeros archivos .txt:")
+                            for i, f in enumerate(txt_files[:3]):
+                                print(f"   {i+1}. {f}")
                         else:
-                            print(f"❌ Error: results es None para {self.vd.ladder_sn}/{self.vd.module_sn}")
-                            print("🔧 Posibles causas:")
-                            print("   - Directorio no existe")
-                            print("   - No hay archivos .txt en el directorio")
-                            print("   - Error en el procesamiento de archivos")
-                            
-                    except Exception as e:
-                        print(f"💥 Excepción durante el procesamiento: {e}")
-                        import traceback
-                        traceback.print_exc()
+                            print("⚠️ No se encontraron archivos .txt")
+                    else:
+                        print("❌ El directorio no existe")
+                        # Verificar directorios padre
+                        parent_dirs = expected_path.split(os.sep)
+                        current_path = ""
+                        for i, dir_name in enumerate(parent_dirs):
+                            if dir_name:
+                                current_path = os.path.join(current_path, dir_name)
+                                exists = os.path.exists(current_path)
+                                print(f"   {i}: {current_path} -> {'✅' if exists else '❌'}")
+                                if not exists:
+                                    break
+
+                    # Luego llamar la función
+                    results = process_p_scan_files(self.vd.ladder_sn, self.vd.module_sn)
                     
                     accumulated_progress += step_percentage
                     update_progress(accumulated_progress)
