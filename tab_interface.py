@@ -815,7 +815,7 @@ class TabInterface(QWidget):
         self.ax_thr.set_xticks(range(16))
         self.ax_thr.set_xticklabels(['N0', 'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 
                                        'P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'])
-        self.ax_thr.set_title('Pscan', fontsize=8)
+        self.ax_thr.set_title('Thr', fontsize=8)
         self.ax_thr.scatter([-1], [0], alpha=0)
         self.ax_thr.xaxis.label.set_fontsize(7)
         self.ax_thr.yaxis.label.set_fontsize(7)
@@ -857,7 +857,7 @@ class TabInterface(QWidget):
         self.ax_adc_gain.set_xticks(range(16))
         self.ax_adc_gain.set_xticklabels(['N0', 'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 
                                        'P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'])
-        self.ax_adc_gain.set_title('Pscan', fontsize=8)
+        self.ax_adc_gain.set_title('ADC gain', fontsize=8)
         self.ax_adc_gain.scatter([-1], [0], alpha=0)
         self.ax_adc_gain.xaxis.label.set_fontsize(7)
         self.ax_adc_gain.yaxis.label.set_fontsize(7)
