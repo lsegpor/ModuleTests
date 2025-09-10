@@ -786,10 +786,9 @@ class TabInterface(QWidget):
         self.toolbar_pscan.layout().setSpacing(1)
         self.toolbar_pscan.setStyleSheet("""
             QToolBar {
-                spacing: 8px;
+                spacing: 9px;
                 padding: 0px;
                 background-color: lavender;
-                qproperty-alignment: AlignCenter;
             }
             QToolButton {
                 padding: 1px;
