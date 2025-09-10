@@ -743,7 +743,7 @@ class TabInterface(QWidget):
         right_layout.addWidget(feb_lv_group, 1, 0)
 
         pscan_plot_group = QGroupBox("Pscan process results")
-        pscan_plot_group.setFixedHeight(480)  # Reducido de 450 a 320
+        pscan_plot_group.setFixedHeight(460)  # Reducido de 450 a 320
         pscan_plot_group.setStyleSheet("""
             QGroupBox {
                 background-color: lavender;
