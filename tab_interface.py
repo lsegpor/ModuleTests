@@ -571,7 +571,7 @@ class TabInterface(QWidget):
         
         right_widget = QWidget()
         right_widget.setStyleSheet("background-color: lavender; border: none;")
-        right_widget.setFixedWidth(400)
+        right_widget.setFixedWidth(500)
         right_layout = QGridLayout(right_widget)
         top_layout.addWidget(right_widget, 0, 2)
         
