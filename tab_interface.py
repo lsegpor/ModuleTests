@@ -743,7 +743,7 @@ class TabInterface(QWidget):
         right_layout.addWidget(feb_lv_group, 1, 0)
 
         pscan_plot_group = QGroupBox("Pscan process results")
-        pscan_plot_group.setFixedHeight(460)  # Reducido de 450 a 320
+        pscan_plot_group.setFixedHeight(450)
         pscan_plot_group.setStyleSheet("""
             QGroupBox {
                 background-color: lavender;
@@ -763,27 +763,26 @@ class TabInterface(QWidget):
 
         pscan_plot_layout = QGridLayout(pscan_plot_group)
 
-        # Primera gráfica
-        self.figure_pscan = Figure(figsize=(3, 1.2), dpi=100)  # Reducido de (4, 2) a (3, 1.2)
-        self.canvas_pscan = FigureCanvas(self.figure_pscan)  # Corregido: era self.figure_nside
-        self.canvas_pscan.setFixedHeight(100)  # Reducido de 170 a 100
+        self.figure_pscan = Figure(figsize=(4, 1.2), dpi=100)
+        self.canvas_pscan = FigureCanvas(self.figure_pscan)
+        self.canvas_pscan.setFixedHeight(100)
         self.ax_pscan = self.figure_pscan.add_subplot(111)
 
         self.ax_pscan.set_xlim(-0.5, 7.5)
         self.ax_pscan.set_ylim(1000, 1400)
         self.ax_pscan.set_xticks(range(8))
         self.ax_pscan.set_xticklabels([str(i) for i in range(8)])
-        self.ax_pscan.set_title('Pscan', fontsize=8)  # Reducido de 9 a 8
+        self.ax_pscan.set_title('Pscan', fontsize=8)
         self.ax_pscan.scatter([-1], [0], alpha=0)
-        self.ax_pscan.xaxis.label.set_fontsize(7)  # Reducido de 8 a 7
-        self.ax_pscan.yaxis.label.set_fontsize(7)  # Reducido de 8 a 7
-        self.ax_pscan.tick_params(axis='both', which='major', labelsize=6)  # Reducido de 7 a 6
+        self.ax_pscan.xaxis.label.set_fontsize(7)
+        self.ax_pscan.yaxis.label.set_fontsize(7)
+        self.ax_pscan.tick_params(axis='both', which='major', labelsize=6)
         self.ax_pscan.grid(True, linestyle='--', alpha=0.5, linewidth=0.5)
-        self.figure_pscan.tight_layout(pad=0.5)  # Agregado padding más pequeño
+        self.figure_pscan.tight_layout(pad=0.5)
 
         self.toolbar_pscan = NavigationToolBar(self.canvas_pscan, self, coordinates=False)
-        self.toolbar_pscan.setFixedHeight(18)  # Reducido de 20 a 18
-        self.toolbar_pscan.setIconSize(QSize(12, 12))  # Reducido de (15, 15) a (12, 12)
+        self.toolbar_pscan.setFixedHeight(18)
+        self.toolbar_pscan.setIconSize(QSize(12, 12))
         self.toolbar_pscan.layout().setSpacing(1)
         self.toolbar_pscan.setStyleSheet("""
             QToolBar {
@@ -805,27 +804,26 @@ class TabInterface(QWidget):
                 action.triggered.connect(lambda: self.save_figure_pscan())
                 break
 
-        # Segunda gráfica
-        self.figure_pscan1 = Figure(figsize=(3, 1.2), dpi=100)  # Reducido de (4, 2) a (3, 1.2)
-        self.canvas_pscan1 = FigureCanvas(self.figure_pscan1)  # Corregido: era self.figure_nside
-        self.canvas_pscan1.setFixedHeight(100)  # Reducido de 170 a 100
+        self.figure_pscan1 = Figure(figsize=(4, 1.2), dpi=100)
+        self.canvas_pscan1 = FigureCanvas(self.figure_pscan1)
+        self.canvas_pscan1.setFixedHeight(100)
         self.ax_pscan1 = self.figure_pscan1.add_subplot(111)
 
         self.ax_pscan1.set_xlim(-0.5, 7.5)
         self.ax_pscan1.set_ylim(1000, 1400)
         self.ax_pscan1.set_xticks(range(8))
         self.ax_pscan1.set_xticklabels([str(i) for i in range(8)])
-        self.ax_pscan1.set_title('Pscan', fontsize=8)  # Reducido de 9 a 8
+        self.ax_pscan1.set_title('Pscan', fontsize=8)
         self.ax_pscan1.scatter([-1], [0], alpha=0)
-        self.ax_pscan1.xaxis.label.set_fontsize(7)  # Reducido de 8 a 7
-        self.ax_pscan1.yaxis.label.set_fontsize(7)  # Reducido de 8 a 7
-        self.ax_pscan1.tick_params(axis='both', which='major', labelsize=6)  # Reducido de 7 a 6
+        self.ax_pscan1.xaxis.label.set_fontsize(7)
+        self.ax_pscan1.yaxis.label.set_fontsize(7)
+        self.ax_pscan1.tick_params(axis='both', which='major', labelsize=6)
         self.ax_pscan1.grid(True, linestyle='--', alpha=0.5, linewidth=0.5)
-        self.figure_pscan1.tight_layout(pad=0.5)  # Agregado padding más pequeño
+        self.figure_pscan1.tight_layout(pad=0.5)
 
         self.toolbar_pscan1 = NavigationToolBar(self.canvas_pscan1, self, coordinates=False)
-        self.toolbar_pscan1.setFixedHeight(18)  # Reducido de 20 a 18
-        self.toolbar_pscan1.setIconSize(QSize(12, 12))  # Reducido de (15, 15) a (12, 12)
+        self.toolbar_pscan1.setFixedHeight(18)
+        self.toolbar_pscan1.setIconSize(QSize(12, 12))
         self.toolbar_pscan1.layout().setSpacing(1)
         self.toolbar_pscan1.setStyleSheet("""
             QToolBar {
@@ -847,27 +845,26 @@ class TabInterface(QWidget):
                 action.triggered.connect(lambda: self.save_figure_pscan1())
                 break
 
-        # Tercera gráfica
-        self.figure_pscan2 = Figure(figsize=(3, 1.2), dpi=100)  # Reducido de (4, 2) a (3, 1.2)
-        self.canvas_pscan2 = FigureCanvas(self.figure_pscan2)  # Corregido: era self.figure_nside
-        self.canvas_pscan2.setFixedHeight(100)  # Reducido de 170 a 100
+        self.figure_pscan2 = Figure(figsize=(4, 1.2), dpi=100)
+        self.canvas_pscan2 = FigureCanvas(self.figure_pscan2)
+        self.canvas_pscan2.setFixedHeight(100)
         self.ax_pscan2 = self.figure_pscan2.add_subplot(111)
 
         self.ax_pscan2.set_xlim(-0.5, 7.5)
         self.ax_pscan2.set_ylim(1000, 1400)
         self.ax_pscan2.set_xticks(range(8))
         self.ax_pscan2.set_xticklabels([str(i) for i in range(8)])
-        self.ax_pscan2.set_title('Pscan', fontsize=8)  # Reducido de 9 a 8
+        self.ax_pscan2.set_title('Pscan', fontsize=8)
         self.ax_pscan2.scatter([-1], [0], alpha=0)
-        self.ax_pscan2.xaxis.label.set_fontsize(7)  # Reducido de 8 a 7
-        self.ax_pscan2.yaxis.label.set_fontsize(7)  # Reducido de 8 a 7
-        self.ax_pscan2.tick_params(axis='both', which='major', labelsize=6)  # Reducido de 7 a 6
+        self.ax_pscan2.xaxis.label.set_fontsize(7)
+        self.ax_pscan2.yaxis.label.set_fontsize(7)
+        self.ax_pscan2.tick_params(axis='both', which='major', labelsize=6)
         self.ax_pscan2.grid(True, linestyle='--', alpha=0.5, linewidth=0.5)
-        self.figure_pscan2.tight_layout(pad=0.5)  # Agregado padding más pequeño
+        self.figure_pscan2.tight_layout(pad=0.5)
 
         self.toolbar_pscan2 = NavigationToolBar(self.canvas_pscan2, self, coordinates=False)
-        self.toolbar_pscan2.setFixedHeight(15)  # Más pequeño para encajar
-        self.toolbar_pscan2.setIconSize(QSize(10, 10))  # Más pequeño para encajar
+        self.toolbar_pscan2.setFixedHeight(15)
+        self.toolbar_pscan2.setIconSize(QSize(10, 10))
         self.toolbar_pscan2.layout().setSpacing(1)
         self.toolbar_pscan2.setStyleSheet("""
             QToolBar {
@@ -889,7 +886,6 @@ class TabInterface(QWidget):
                 action.triggered.connect(lambda: self.save_figure_pscan2())
                 break
 
-        # Layout con las gráficas más compactas
         pscan_plot_layout.addWidget(self.canvas_pscan, 0, 0)
         pscan_plot_layout.addWidget(self.toolbar_pscan, 1, 0, 1, 3)
         pscan_plot_layout.addWidget(self.canvas_pscan1, 2, 0)
