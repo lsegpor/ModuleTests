@@ -531,10 +531,10 @@ class TabInterface(QWidget):
                 action.triggered.connect(lambda: self.save_figure_pside())
                 break
         
-        plot_layout.addWidget(self.canvas_nside, 0, 0)
-        plot_layout.addWidget(self.toolbar_nside, 1, 0, 1, 3)
-        plot_layout.addWidget(self.canvas_pside, 2, 0)
-        plot_layout.addWidget(self.toolbar_pside, 3, 0, 1, 3)
+        plot_layout.addWidget(self.canvas_nside, 0, 0, Qt.AlignCenter)
+        plot_layout.addWidget(self.toolbar_nside, 1, 0, Qt.AlignCenter)
+        plot_layout.addWidget(self.canvas_pside, 2, 0, Qt.AlignCenter)
+        plot_layout.addWidget(self.toolbar_pside, 3, 0, Qt.AlignCenter)
         
         middle_layout.addWidget(plot_group, 3, 0, 1, 3)
         
@@ -763,31 +763,31 @@ class TabInterface(QWidget):
 
         pscan_plot_layout = QGridLayout(pscan_plot_group)
 
-        self.figure_pscan = Figure(figsize=(6, 1.2), dpi=100)
-        self.canvas_pscan = FigureCanvas(self.figure_pscan)
-        self.canvas_pscan.setFixedHeight(100)
-        self.ax_pscan = self.figure_pscan.add_subplot(111)
+        self.figure_enc = Figure(figsize=(6, 1.2), dpi=100)
+        self.canvas_enc = FigureCanvas(self.figure_enc)
+        self.canvas_enc.setFixedHeight(100)
+        self.ax_enc = self.figure_enc.add_subplot(111)
 
-        self.ax_pscan.set_xlim(-0.5, 15.5)
-        self.ax_pscan.set_ylim(1000, 1400)
-        self.ax_pscan.set_xticks(range(16))
-        self.ax_pscan.set_xticklabels(['N0', 'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 
+        self.ax_enc.set_xlim(-0.5, 15.5)
+        self.ax_enc.set_ylim(0, 5000)
+        self.ax_enc.set_xticks(range(16))
+        self.ax_enc.set_xticklabels(['N0', 'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 
                                        'P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'])
-        self.ax_pscan.set_title('Pscan', fontsize=8)
-        self.ax_pscan.scatter([-1], [0], alpha=0)
-        self.ax_pscan.xaxis.label.set_fontsize(7)
-        self.ax_pscan.yaxis.label.set_fontsize(7)
-        self.ax_pscan.tick_params(axis='both', which='major', labelsize=6)
-        self.ax_pscan.grid(True, linestyle='--', alpha=0.5, linewidth=0.5)
-        self.figure_pscan.tight_layout(pad=0.5)
+        self.ax_enc.set_title('ENC', fontsize=8)
+        self.ax_enc.scatter([-1], [0], alpha=0)
+        self.ax_enc.xaxis.label.set_fontsize(7)
+        self.ax_enc.yaxis.label.set_fontsize(7)
+        self.ax_enc.tick_params(axis='both', which='major', labelsize=6)
+        self.ax_enc.grid(True, linestyle='--', alpha=0.5, linewidth=0.5)
+        self.figure_enc.tight_layout(pad=0.5)
 
-        self.toolbar_pscan = NavigationToolBar(self.canvas_pscan, self, coordinates=False)
-        self.toolbar_pscan.setFixedHeight(18)
-        self.toolbar_pscan.setIconSize(QSize(12, 12))
-        self.toolbar_pscan.layout().setSpacing(1)
-        self.toolbar_pscan.setStyleSheet("""
+        self.toolbar_enc = NavigationToolBar(self.canvas_enc, self, coordinates=False)
+        self.toolbar_enc.setFixedHeight(18)
+        self.toolbar_enc.setIconSize(QSize(12, 12))
+        self.toolbar_enc.layout().setSpacing(1)
+        self.toolbar_enc.setStyleSheet("""
             QToolBar {
-                spacing: 8px;
+                spacing: 10px;
                 padding: 0px;
                 background-color: lavender;
             }
@@ -799,37 +799,37 @@ class TabInterface(QWidget):
             }
         """)
 
-        for action in self.toolbar_pscan.actions():
+        for action in self.toolbar_enc.actions():
             if action.text() == 'Save':
                 action.triggered.disconnect()
-                action.triggered.connect(lambda: self.save_figure_pscan())
+                action.triggered.connect(lambda: self.save_figure_enc())
                 break
 
-        self.figure_pscan1 = Figure(figsize=(6, 1.2), dpi=100)
-        self.canvas_pscan1 = FigureCanvas(self.figure_pscan1)
-        self.canvas_pscan1.setFixedHeight(100)
-        self.ax_pscan1 = self.figure_pscan1.add_subplot(111)
+        self.figure_thr = Figure(figsize=(6, 1.2), dpi=100)
+        self.canvas_thr = FigureCanvas(self.figure_thr)
+        self.canvas_thr.setFixedHeight(100)
+        self.ax_thr = self.figure_thr.add_subplot(111)
 
-        self.ax_pscan1.set_xlim(-0.5, 15.5)
-        self.ax_pscan1.set_ylim(1000, 1400)
-        self.ax_pscan1.set_xticks(range(16))
-        self.ax_pscan.set_xticklabels(['N0', 'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 
+        self.ax_thr.set_xlim(-0.5, 15.5)
+        self.ax_thr.set_ylim(8000, 14000)
+        self.ax_thr.set_xticks(range(16))
+        self.ax_thr.set_xticklabels(['N0', 'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 
                                        'P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'])
-        self.ax_pscan1.set_title('Pscan', fontsize=8)
-        self.ax_pscan1.scatter([-1], [0], alpha=0)
-        self.ax_pscan1.xaxis.label.set_fontsize(7)
-        self.ax_pscan1.yaxis.label.set_fontsize(7)
-        self.ax_pscan1.tick_params(axis='both', which='major', labelsize=6)
-        self.ax_pscan1.grid(True, linestyle='--', alpha=0.5, linewidth=0.5)
-        self.figure_pscan1.tight_layout(pad=0.5)
+        self.ax_thr.set_title('Pscan', fontsize=8)
+        self.ax_thr.scatter([-1], [0], alpha=0)
+        self.ax_thr.xaxis.label.set_fontsize(7)
+        self.ax_thr.yaxis.label.set_fontsize(7)
+        self.ax_thr.tick_params(axis='both', which='major', labelsize=6)
+        self.ax_thr.grid(True, linestyle='--', alpha=0.5, linewidth=0.5)
+        self.figure_thr.tight_layout(pad=0.5)
 
-        self.toolbar_pscan1 = NavigationToolBar(self.canvas_pscan1, self, coordinates=False)
-        self.toolbar_pscan1.setFixedHeight(18)
-        self.toolbar_pscan1.setIconSize(QSize(12, 12))
-        self.toolbar_pscan1.layout().setSpacing(1)
-        self.toolbar_pscan1.setStyleSheet("""
+        self.toolbar_thr = NavigationToolBar(self.canvas_thr, self, coordinates=False)
+        self.toolbar_thr.setFixedHeight(18)
+        self.toolbar_thr.setIconSize(QSize(12, 12))
+        self.toolbar_thr.layout().setSpacing(1)
+        self.toolbar_thr.setStyleSheet("""
             QToolBar {
-                spacing: 8px;
+                spacing: 10px;
                 padding: 0px;
                 background-color: lavender;
             }
@@ -841,37 +841,37 @@ class TabInterface(QWidget):
             }
         """)
 
-        for action in self.toolbar_pscan1.actions():
+        for action in self.toolbar_thr.actions():
             if action.text() == 'Save':
                 action.triggered.disconnect()
-                action.triggered.connect(lambda: self.save_figure_pscan1())
+                action.triggered.connect(lambda: self.save_figure_thr())
                 break
 
-        self.figure_pscan2 = Figure(figsize=(6, 1.2), dpi=100)
-        self.canvas_pscan2 = FigureCanvas(self.figure_pscan2)
-        self.canvas_pscan2.setFixedHeight(100)
-        self.ax_pscan2 = self.figure_pscan2.add_subplot(111)
+        self.figure_adc_gain = Figure(figsize=(6, 1.2), dpi=100)
+        self.canvas_adc_gain = FigureCanvas(self.figure_adc_gain)
+        self.canvas_adc_gain.setFixedHeight(100)
+        self.ax_adc_gain = self.figure_adc_gain.add_subplot(111)
 
-        self.ax_pscan2.set_xlim(-0.5, 15.5)
-        self.ax_pscan2.set_ylim(1000, 1400)
-        self.ax_pscan2.set_xticks(range(16))
-        self.ax_pscan.set_xticklabels(['N0', 'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 
+        self.ax_adc_gain.set_xlim(-0.5, 15.5)
+        self.ax_adc_gain.set_ylim(500, 4500)
+        self.ax_adc_gain.set_xticks(range(16))
+        self.ax_adc_gain.set_xticklabels(['N0', 'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 
                                        'P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'])
-        self.ax_pscan2.set_title('Pscan', fontsize=8)
-        self.ax_pscan2.scatter([-1], [0], alpha=0)
-        self.ax_pscan2.xaxis.label.set_fontsize(7)
-        self.ax_pscan2.yaxis.label.set_fontsize(7)
-        self.ax_pscan2.tick_params(axis='both', which='major', labelsize=6)
-        self.ax_pscan2.grid(True, linestyle='--', alpha=0.5, linewidth=0.5)
-        self.figure_pscan2.tight_layout(pad=0.5)
+        self.ax_adc_gain.set_title('Pscan', fontsize=8)
+        self.ax_adc_gain.scatter([-1], [0], alpha=0)
+        self.ax_adc_gain.xaxis.label.set_fontsize(7)
+        self.ax_adc_gain.yaxis.label.set_fontsize(7)
+        self.ax_adc_gain.tick_params(axis='both', which='major', labelsize=6)
+        self.ax_adc_gain.grid(True, linestyle='--', alpha=0.5, linewidth=0.5)
+        self.figure_adc_gain.tight_layout(pad=0.5)
 
-        self.toolbar_pscan2 = NavigationToolBar(self.canvas_pscan2, self, coordinates=False)
-        self.toolbar_pscan2.setFixedHeight(18)
-        self.toolbar_pscan2.setIconSize(QSize(12, 12))
-        self.toolbar_pscan2.layout().setSpacing(1)
-        self.toolbar_pscan2.setStyleSheet("""
+        self.toolbar_adc_gain = NavigationToolBar(self.canvas_adc_gain, self, coordinates=False)
+        self.toolbar_adc_gain.setFixedHeight(18)
+        self.toolbar_adc_gain.setIconSize(QSize(12, 12))
+        self.toolbar_adc_gain.layout().setSpacing(1)
+        self.toolbar_adc_gain.setStyleSheet("""
             QToolBar {
-                spacing: 8px;
+                spacing: 10px;
                 padding: 0px;
                 background-color: lavender;
             }
@@ -883,18 +883,18 @@ class TabInterface(QWidget):
             }
         """)
 
-        for action in self.toolbar_pscan2.actions():
+        for action in self.toolbar_adc_gain.actions():
             if action.text() == 'Save':
                 action.triggered.disconnect()
-                action.triggered.connect(lambda: self.save_figure_pscan2())
+                action.triggered.connect(lambda: self.save_figure_adc_gain())
                 break
 
-        pscan_plot_layout.addWidget(self.canvas_pscan, 0, 0, Qt.AlignCenter)
-        pscan_plot_layout.addWidget(self.toolbar_pscan, 1, 0, Qt.AlignCenter)
-        pscan_plot_layout.addWidget(self.canvas_pscan1, 2, 0, Qt.AlignCenter)
-        pscan_plot_layout.addWidget(self.toolbar_pscan1, 3, 0, Qt.AlignCenter)
-        pscan_plot_layout.addWidget(self.canvas_pscan2, 4, 0, Qt.AlignCenter)
-        pscan_plot_layout.addWidget(self.toolbar_pscan2, 5, 0, Qt.AlignCenter)
+        pscan_plot_layout.addWidget(self.canvas_enc, 0, 0, Qt.AlignCenter)
+        pscan_plot_layout.addWidget(self.toolbar_enc, 1, 0, Qt.AlignCenter)
+        pscan_plot_layout.addWidget(self.canvas_thr, 2, 0, Qt.AlignCenter)
+        pscan_plot_layout.addWidget(self.toolbar_thr, 3, 0, Qt.AlignCenter)
+        pscan_plot_layout.addWidget(self.canvas_adc_gain, 4, 0, Qt.AlignCenter)
+        pscan_plot_layout.addWidget(self.toolbar_adc_gain, 5, 0, Qt.AlignCenter)
 
         right_layout.addWidget(pscan_plot_group, 2, 0, 1, 3)
 
