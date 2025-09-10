@@ -789,6 +789,7 @@ class TabInterface(QWidget):
                 spacing: 9px;
                 padding: 0px;
                 background-color: lavender;
+                margin-left: 6px;
             }
             QToolButton {
                 padding: 1px;
@@ -863,8 +864,8 @@ class TabInterface(QWidget):
         self.figure_pscan2.tight_layout(pad=0.5)
 
         self.toolbar_pscan2 = NavigationToolBar(self.canvas_pscan2, self, coordinates=False)
-        self.toolbar_pscan2.setFixedHeight(15)
-        self.toolbar_pscan2.setIconSize(QSize(10, 10))
+        self.toolbar_pscan2.setFixedHeight(18)
+        self.toolbar_pscan2.setIconSize(QSize(12, 12))
         self.toolbar_pscan2.layout().setSpacing(1)
         self.toolbar_pscan2.setStyleSheet("""
             QToolBar {
