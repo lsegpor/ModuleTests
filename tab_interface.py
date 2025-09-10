@@ -789,6 +789,7 @@ class TabInterface(QWidget):
                 spacing: 8px;
                 padding: 0px;
                 background-color: lavender;
+                qproperty-alignment: AlignCenter;
             }
             QToolButton {
                 padding: 1px;
