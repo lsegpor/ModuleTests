@@ -763,15 +763,16 @@ class TabInterface(QWidget):
 
         pscan_plot_layout = QGridLayout(pscan_plot_group)
 
-        self.figure_pscan = Figure(figsize=(4, 1.2), dpi=100)
+        self.figure_pscan = Figure(figsize=(6, 1.2), dpi=100)
         self.canvas_pscan = FigureCanvas(self.figure_pscan)
         self.canvas_pscan.setFixedHeight(100)
         self.ax_pscan = self.figure_pscan.add_subplot(111)
 
-        self.ax_pscan.set_xlim(-0.5, 7.5)
+        self.ax_pscan.set_xlim(-0.5, 15.5)
         self.ax_pscan.set_ylim(1000, 1400)
-        self.ax_pscan.set_xticks(range(8))
-        self.ax_pscan.set_xticklabels([str(i) for i in range(8)])
+        self.ax_pscan.set_xticks(range(16))
+        self.ax_pscan.set_xticklabels(['N0', 'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 
+                                       'P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'])
         self.ax_pscan.set_title('Pscan', fontsize=8)
         self.ax_pscan.scatter([-1], [0], alpha=0)
         self.ax_pscan.xaxis.label.set_fontsize(7)
@@ -804,15 +805,16 @@ class TabInterface(QWidget):
                 action.triggered.connect(lambda: self.save_figure_pscan())
                 break
 
-        self.figure_pscan1 = Figure(figsize=(4, 1.2), dpi=100)
+        self.figure_pscan1 = Figure(figsize=(6, 1.2), dpi=100)
         self.canvas_pscan1 = FigureCanvas(self.figure_pscan1)
         self.canvas_pscan1.setFixedHeight(100)
         self.ax_pscan1 = self.figure_pscan1.add_subplot(111)
 
-        self.ax_pscan1.set_xlim(-0.5, 7.5)
+        self.ax_pscan1.set_xlim(-0.5, 15.5)
         self.ax_pscan1.set_ylim(1000, 1400)
-        self.ax_pscan1.set_xticks(range(8))
-        self.ax_pscan1.set_xticklabels([str(i) for i in range(8)])
+        self.ax_pscan1.set_xticks(range(16))
+        self.ax_pscan.set_xticklabels(['N0', 'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 
+                                       'P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'])
         self.ax_pscan1.set_title('Pscan', fontsize=8)
         self.ax_pscan1.scatter([-1], [0], alpha=0)
         self.ax_pscan1.xaxis.label.set_fontsize(7)
@@ -845,15 +847,16 @@ class TabInterface(QWidget):
                 action.triggered.connect(lambda: self.save_figure_pscan1())
                 break
 
-        self.figure_pscan2 = Figure(figsize=(4, 1.2), dpi=100)
+        self.figure_pscan2 = Figure(figsize=(6, 1.2), dpi=100)
         self.canvas_pscan2 = FigureCanvas(self.figure_pscan2)
         self.canvas_pscan2.setFixedHeight(100)
         self.ax_pscan2 = self.figure_pscan2.add_subplot(111)
 
-        self.ax_pscan2.set_xlim(-0.5, 7.5)
+        self.ax_pscan2.set_xlim(-0.5, 15.5)
         self.ax_pscan2.set_ylim(1000, 1400)
-        self.ax_pscan2.set_xticks(range(8))
-        self.ax_pscan2.set_xticklabels([str(i) for i in range(8)])
+        self.ax_pscan2.set_xticks(range(16))
+        self.ax_pscan.set_xticklabels(['N0', 'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 
+                                       'P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'])
         self.ax_pscan2.set_title('Pscan', fontsize=8)
         self.ax_pscan2.scatter([-1], [0], alpha=0)
         self.ax_pscan2.xaxis.label.set_fontsize(7)

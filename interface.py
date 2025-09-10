@@ -18,7 +18,7 @@ class Interface(QMainWindow):
         
         self.setWindowTitle("STS_Module Testing")
         self.setStyleSheet("background-color: lavender;")
-        self.setFixedSize(1200, 1000)
+        self.setFixedSize(1400, 1000)
         
         self.center_window()
         
