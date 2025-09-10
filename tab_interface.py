@@ -786,10 +786,9 @@ class TabInterface(QWidget):
         self.toolbar_pscan.layout().setSpacing(1)
         self.toolbar_pscan.setStyleSheet("""
             QToolBar {
-                spacing: 9px;
+                spacing: 8px;
                 padding: 0px;
                 background-color: lavender;
-                margin-left: 6px;
             }
             QToolButton {
                 padding: 1px;
@@ -887,12 +886,12 @@ class TabInterface(QWidget):
                 action.triggered.connect(lambda: self.save_figure_pscan2())
                 break
 
-        pscan_plot_layout.addWidget(self.canvas_pscan, 0, 0)
-        pscan_plot_layout.addWidget(self.toolbar_pscan, 1, 0, 1, 3)
-        pscan_plot_layout.addWidget(self.canvas_pscan1, 2, 0)
-        pscan_plot_layout.addWidget(self.toolbar_pscan1, 3, 0, 1, 3)
-        pscan_plot_layout.addWidget(self.canvas_pscan2, 4, 0)
-        pscan_plot_layout.addWidget(self.toolbar_pscan2, 5, 0, 1, 3)
+        pscan_plot_layout.addWidget(self.canvas_pscan, 0, 0, Qt.AlignCenter)
+        pscan_plot_layout.addWidget(self.toolbar_pscan, 1, 0, Qt.AlignCenter)
+        pscan_plot_layout.addWidget(self.canvas_pscan1, 2, 0, Qt.AlignCenter)
+        pscan_plot_layout.addWidget(self.toolbar_pscan1, 3, 0, Qt.AlignCenter)
+        pscan_plot_layout.addWidget(self.canvas_pscan2, 4, 0, Qt.AlignCenter)
+        pscan_plot_layout.addWidget(self.toolbar_pscan2, 5, 0, Qt.AlignCenter)
 
         right_layout.addWidget(pscan_plot_group, 2, 0, 1, 3)
 
