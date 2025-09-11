@@ -634,6 +634,7 @@ class TabInterface(QWidget):
                 subcontrol-origin: margin;
                 subcontrol-position: top center;
                 padding: 0 5px;
+                margin-top: 10px;
                 background-color: lavender;
             }
         """)
@@ -743,7 +744,7 @@ class TabInterface(QWidget):
         right_layout.addWidget(feb_lv_group, 1, 0)
 
         pscan_plot_group1 = QGroupBox("")
-        pscan_plot_group1.setFixedHeight(300)
+        pscan_plot_group1.setFixedHeight(350)
         pscan_plot_group1.setStyleSheet("""
             QGroupBox {
                 background-color: lavender;
@@ -818,7 +819,7 @@ class TabInterface(QWidget):
         top_layout.addWidget(extra_widget, 0, 3)
 
         pscan_plot_group2 = QGroupBox("")
-        pscan_plot_group2.setFixedHeight(600)
+        pscan_plot_group2.setFixedHeight(650)
         pscan_plot_group2.setStyleSheet("""
             QGroupBox {
                 background-color: lavender;
