@@ -779,7 +779,7 @@ class TabInterface(QWidget):
         self.ax_enc.yaxis.label.set_fontsize(8)
         self.ax_enc.tick_params(axis='both', which='major', labelsize=7)
         self.ax_enc.grid(True, linestyle='--', alpha=0.5, linewidth=0.5)
-        self.figure_enc.subplots_adjust(top=0.9)
+        self.figure_enc.tight_layout(pad=0.5)
 
         self.toolbar_enc = NavigationToolBar(self.canvas_enc, self, coordinates=False)
         self.toolbar_enc.setFixedHeight(25)
@@ -853,7 +853,7 @@ class TabInterface(QWidget):
         self.ax_thr.yaxis.label.set_fontsize(8)
         self.ax_thr.tick_params(axis='both', which='major', labelsize=7)
         self.ax_thr.grid(True, linestyle='--', alpha=0.5, linewidth=0.5)
-        self.figure_thr.subplots_adjust(top=0.9)
+        self.figure_thr.tight_layout(pad=0.5)
 
         self.toolbar_thr = NavigationToolBar(self.canvas_thr, self, coordinates=False)
         self.toolbar_thr.setFixedHeight(25)
@@ -898,7 +898,7 @@ class TabInterface(QWidget):
         self.ax_adc_gain.yaxis.label.set_fontsize(8)
         self.ax_adc_gain.tick_params(axis='both', which='major', labelsize=7)
         self.ax_adc_gain.grid(True, linestyle='--', alpha=0.5, linewidth=0.5)
-        self.figure_adc_gain.subplots_adjust(top=0.9)
+        self.figure_adc_gain.tight_layout(pad=0.5)
 
         self.toolbar_adc_gain = NavigationToolBar(self.canvas_adc_gain, self, coordinates=False)
         self.toolbar_adc_gain.setFixedHeight(25)
