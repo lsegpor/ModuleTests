@@ -784,7 +784,7 @@ class TabInterface(QWidget):
         self.toolbar_enc = NavigationToolBar(self.canvas_enc, self, coordinates=False)
         self.toolbar_enc.setFixedHeight(25)
         self.toolbar_enc.setIconSize(QSize(20, 20))
-        self.toolbar_enc.layout().setSpacing(1)
+        self.toolbar_enc.layout().setSpacing(2)
         self.toolbar_enc.setStyleSheet("""
             QToolBar {
                 spacing: 12px;
@@ -858,7 +858,7 @@ class TabInterface(QWidget):
         self.toolbar_thr = NavigationToolBar(self.canvas_thr, self, coordinates=False)
         self.toolbar_thr.setFixedHeight(25)
         self.toolbar_thr.setIconSize(QSize(20, 20))
-        self.toolbar_thr.layout().setSpacing(1)
+        self.toolbar_thr.layout().setSpacing(2)
         self.toolbar_thr.setStyleSheet("""
             QToolBar {
                 spacing: 12px;
@@ -903,7 +903,7 @@ class TabInterface(QWidget):
         self.toolbar_adc_gain = NavigationToolBar(self.canvas_adc_gain, self, coordinates=False)
         self.toolbar_adc_gain.setFixedHeight(25)
         self.toolbar_adc_gain.setIconSize(QSize(20, 20))
-        self.toolbar_adc_gain.layout().setSpacing(1)
+        self.toolbar_adc_gain.layout().setSpacing(2)
         self.toolbar_adc_gain.setStyleSheet("""
             QToolBar {
                 spacing: 12px;
