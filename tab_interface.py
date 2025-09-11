@@ -743,7 +743,7 @@ class TabInterface(QWidget):
         right_layout.addWidget(feb_lv_group, 1, 0)
 
         pscan_plot_group1 = QGroupBox("")
-        pscan_plot_group1.setFixedHeight(300)
+        pscan_plot_group1.setFixedHeight(400)
         pscan_plot_group1.setStyleSheet("""
             QGroupBox {
                 background-color: lavender;
@@ -763,9 +763,9 @@ class TabInterface(QWidget):
 
         pscan_plot_layout1 = QGridLayout(pscan_plot_group1)
 
-        self.figure_enc = Figure(figsize=(6, 4), dpi=100)
+        self.figure_enc = Figure(figsize=(6, 5), dpi=100)
         self.canvas_enc = FigureCanvas(self.figure_enc)
-        self.canvas_enc.setFixedHeight(200)
+        self.canvas_enc.setFixedHeight(300)
         self.ax_enc = self.figure_enc.add_subplot(111)
 
         self.ax_enc.set_xlim(-0.5, 15.5)
@@ -773,7 +773,7 @@ class TabInterface(QWidget):
         self.ax_enc.set_xticks(range(16))
         self.ax_enc.set_xticklabels(['N0', 'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 
                                        'P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'])
-        self.ax_enc.set_title('ENC', fontsize=9)
+        self.ax_enc.set_title('ENC', fontsize=10)
         self.ax_enc.scatter([-1], [0], alpha=0)
         self.ax_enc.xaxis.label.set_fontsize(8)
         self.ax_enc.yaxis.label.set_fontsize(8)
@@ -782,9 +782,9 @@ class TabInterface(QWidget):
         self.figure_enc.tight_layout()
 
         self.toolbar_enc = NavigationToolBar(self.canvas_enc, self, coordinates=False)
-        self.toolbar_enc.setFixedHeight(20)
-        self.toolbar_enc.setIconSize(QSize(15, 15))
-        self.toolbar_enc.layout().setSpacing(1)
+        self.toolbar_enc.setFixedHeight(25)
+        self.toolbar_enc.setIconSize(QSize(20, 20))
+        self.toolbar_enc.layout().setSpacing(2)
         self.toolbar_enc.setStyleSheet("""
             QToolBar {
                 spacing: 10px;
@@ -817,7 +817,7 @@ class TabInterface(QWidget):
         top_layout.addWidget(extra_widget, 0, 3)
 
         pscan_plot_group2 = QGroupBox("")
-        pscan_plot_group2.setFixedHeight(600)
+        pscan_plot_group2.setFixedHeight(800)
         pscan_plot_group2.setStyleSheet("""
             QGroupBox {
                 background-color: lavender;
@@ -837,9 +837,9 @@ class TabInterface(QWidget):
 
         pscan_plot_layout2 = QGridLayout(pscan_plot_group2)
 
-        self.figure_thr = Figure(figsize=(6, 4), dpi=100)
+        self.figure_thr = Figure(figsize=(6, 5), dpi=100)
         self.canvas_thr = FigureCanvas(self.figure_thr)
-        self.canvas_thr.setFixedHeight(200)
+        self.canvas_thr.setFixedHeight(300)
         self.ax_thr = self.figure_thr.add_subplot(111)
 
         self.ax_thr.set_xlim(-0.5, 15.5)
@@ -847,7 +847,7 @@ class TabInterface(QWidget):
         self.ax_thr.set_xticks(range(16))
         self.ax_thr.set_xticklabels(['N0', 'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 
                                        'P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'])
-        self.ax_thr.set_title('Thr', fontsize=9)
+        self.ax_thr.set_title('Thr', fontsize=10)
         self.ax_thr.scatter([-1], [0], alpha=0)
         self.ax_thr.xaxis.label.set_fontsize(8)
         self.ax_thr.yaxis.label.set_fontsize(8)
@@ -856,9 +856,9 @@ class TabInterface(QWidget):
         self.figure_thr.tight_layout()
 
         self.toolbar_thr = NavigationToolBar(self.canvas_thr, self, coordinates=False)
-        self.toolbar_thr.setFixedHeight(20)
-        self.toolbar_thr.setIconSize(QSize(15, 15))
-        self.toolbar_thr.layout().setSpacing(1)
+        self.toolbar_thr.setFixedHeight(25)
+        self.toolbar_thr.setIconSize(QSize(20, 20))
+        self.toolbar_thr.layout().setSpacing(2)
         self.toolbar_thr.setStyleSheet("""
             QToolBar {
                 spacing: 10px;
@@ -879,12 +879,12 @@ class TabInterface(QWidget):
                 action.triggered.connect(lambda: self.save_figure_thr())
                 break
 
-        pscan_plot_layout2.addWidget(self.canvas_thr, 2, 0, Qt.AlignCenter)
-        pscan_plot_layout2.addWidget(self.toolbar_thr, 3, 0, Qt.AlignCenter)
+        pscan_plot_layout2.addWidget(self.canvas_thr, 0, 0, Qt.AlignCenter)
+        pscan_plot_layout2.addWidget(self.toolbar_thr, 1, 0, Qt.AlignCenter)
 
-        self.figure_adc_gain = Figure(figsize=(6, 4), dpi=100)
+        self.figure_adc_gain = Figure(figsize=(6, 5), dpi=100)
         self.canvas_adc_gain = FigureCanvas(self.figure_adc_gain)
-        self.canvas_adc_gain.setFixedHeight(200)
+        self.canvas_adc_gain.setFixedHeight(300)
         self.ax_adc_gain = self.figure_adc_gain.add_subplot(111)
 
         self.ax_adc_gain.set_xlim(-0.5, 15.5)
@@ -892,7 +892,7 @@ class TabInterface(QWidget):
         self.ax_adc_gain.set_xticks(range(16))
         self.ax_adc_gain.set_xticklabels(['N0', 'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 
                                        'P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'])
-        self.ax_adc_gain.set_title('ADC gain', fontsize=9)
+        self.ax_adc_gain.set_title('ADC gain', fontsize=10)
         self.ax_adc_gain.scatter([-1], [0], alpha=0)
         self.ax_adc_gain.xaxis.label.set_fontsize(8)
         self.ax_adc_gain.yaxis.label.set_fontsize(8)
@@ -901,9 +901,9 @@ class TabInterface(QWidget):
         self.figure_adc_gain.tight_layout()
 
         self.toolbar_adc_gain = NavigationToolBar(self.canvas_adc_gain, self, coordinates=False)
-        self.toolbar_adc_gain.setFixedHeight(20)
-        self.toolbar_adc_gain.setIconSize(QSize(15, 15))
-        self.toolbar_adc_gain.layout().setSpacing(1)
+        self.toolbar_adc_gain.setFixedHeight(25)
+        self.toolbar_adc_gain.setIconSize(QSize(20, 20))
+        self.toolbar_adc_gain.layout().setSpacing(2)
         self.toolbar_adc_gain.setStyleSheet("""
             QToolBar {
                 spacing: 10px;
@@ -924,8 +924,8 @@ class TabInterface(QWidget):
                 action.triggered.connect(lambda: self.save_figure_adc_gain())
                 break
 
-        pscan_plot_layout2.addWidget(self.canvas_adc_gain, 4, 0, Qt.AlignCenter)
-        pscan_plot_layout2.addWidget(self.toolbar_adc_gain, 5, 0, Qt.AlignCenter)
+        pscan_plot_layout2.addWidget(self.canvas_adc_gain, 2, 0, Qt.AlignCenter)
+        pscan_plot_layout2.addWidget(self.toolbar_adc_gain, 3, 0, Qt.AlignCenter)
 
         extra_layout.addWidget(pscan_plot_group2, 0, 0, Qt.AlignCenter)
 
