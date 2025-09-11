@@ -749,7 +749,7 @@ class TabInterface(QWidget):
                 background-color: lavender;
                 border: 1px solid black;
                 border-radius: 5px;
-                margin-bottom: 10px;
+                margin-top: 10px;
                 font-family: Helvetica;
                 font-size: 14px;
             }
@@ -782,7 +782,7 @@ class TabInterface(QWidget):
         self.figure_enc.tight_layout(h_pad=0.5)
 
         self.toolbar_enc = NavigationToolBar(self.canvas_enc, self, coordinates=False)
-        self.toolbar_enc.setFixedHeight(20)
+        self.toolbar_enc.setFixedHeight(15)
         self.toolbar_enc.setIconSize(QSize(20, 20))
         self.toolbar_enc.layout().setSpacing(1)
         self.toolbar_enc.setStyleSheet("""
@@ -823,7 +823,7 @@ class TabInterface(QWidget):
                 background-color: lavender;
                 border: 1px solid black;
                 border-radius: 5px;
-                margin-bottom: 10px;
+                margin-top: 10px;
                 font-family: Helvetica;
                 font-size: 14px;
             }
@@ -856,7 +856,7 @@ class TabInterface(QWidget):
         self.figure_thr.tight_layout(h_pad=0.5)
 
         self.toolbar_thr = NavigationToolBar(self.canvas_thr, self, coordinates=False)
-        self.toolbar_thr.setFixedHeight(20)
+        self.toolbar_thr.setFixedHeight(15)
         self.toolbar_thr.setIconSize(QSize(20, 20))
         self.toolbar_thr.layout().setSpacing(1)
         self.toolbar_thr.setStyleSheet("""
@@ -901,7 +901,7 @@ class TabInterface(QWidget):
         self.figure_adc_gain.tight_layout(h_pad=0.5)
 
         self.toolbar_adc_gain = NavigationToolBar(self.canvas_adc_gain, self, coordinates=False)
-        self.toolbar_adc_gain.setFixedHeight(20)
+        self.toolbar_adc_gain.setFixedHeight(15)
         self.toolbar_adc_gain.setIconSize(QSize(20, 20))
         self.toolbar_adc_gain.layout().setSpacing(1)
         self.toolbar_adc_gain.setStyleSheet("""
