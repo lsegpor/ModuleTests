@@ -626,7 +626,7 @@ class TabInterface(QWidget):
                 background-color: lavender;
                 border: 1px solid black;
                 border-radius: 5px;
-                margin-top: 10px;
+                margin-top: 20px;
                 font-family: Helvetica;
                 font-size: 14px;
             }
@@ -743,14 +743,14 @@ class TabInterface(QWidget):
         right_layout.addWidget(feb_lv_group, 1, 0)
 
         pscan_plot_group1 = QGroupBox("")
-        pscan_plot_group1.setFixedHeight(400)
+        pscan_plot_group1.setFixedHeight(300)
         pscan_plot_group1.setStyleSheet("""
             QGroupBox {
                 background-color: lavender;
                 border: 1px solid black;
                 border-radius: 5px;
                 margin-top: 10px;
-                padding-top: 10px;
+                padding: 10px;
                 font-family: Helvetica;
                 font-size: 14px;
             }
@@ -818,14 +818,14 @@ class TabInterface(QWidget):
         top_layout.addWidget(extra_widget, 0, 3)
 
         pscan_plot_group2 = QGroupBox("")
-        pscan_plot_group2.setFixedHeight(700)
+        pscan_plot_group2.setFixedHeight(600)
         pscan_plot_group2.setStyleSheet("""
             QGroupBox {
                 background-color: lavender;
                 border: 1px solid black;
                 border-radius: 5px;
                 margin-top: 10px;
-                padding-top: 10px;
+                padding: 10px;
                 font-family: Helvetica;
                 font-size: 14px;
             }
