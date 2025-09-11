@@ -765,7 +765,7 @@ class TabInterface(QWidget):
 
         self.figure_enc = Figure(figsize=(6, 5), dpi=100)
         self.canvas_enc = FigureCanvas(self.figure_enc)
-        self.canvas_enc.setFixedHeight(300)
+        self.canvas_enc.setFixedHeight(250)
         self.ax_enc = self.figure_enc.add_subplot(111)
 
         self.ax_enc.set_xlim(-0.5, 15.5)
@@ -784,10 +784,10 @@ class TabInterface(QWidget):
         self.toolbar_enc = NavigationToolBar(self.canvas_enc, self, coordinates=False)
         self.toolbar_enc.setFixedHeight(25)
         self.toolbar_enc.setIconSize(QSize(20, 20))
-        self.toolbar_enc.layout().setSpacing(2)
+        self.toolbar_enc.layout().setSpacing(1)
         self.toolbar_enc.setStyleSheet("""
             QToolBar {
-                spacing: 10px;
+                spacing: 12px;
                 padding: 0px;
                 background-color: lavender;
             }
@@ -817,7 +817,7 @@ class TabInterface(QWidget):
         top_layout.addWidget(extra_widget, 0, 3)
 
         pscan_plot_group2 = QGroupBox("")
-        pscan_plot_group2.setFixedHeight(800)
+        pscan_plot_group2.setFixedHeight(700)
         pscan_plot_group2.setStyleSheet("""
             QGroupBox {
                 background-color: lavender;
@@ -839,7 +839,7 @@ class TabInterface(QWidget):
 
         self.figure_thr = Figure(figsize=(6, 5), dpi=100)
         self.canvas_thr = FigureCanvas(self.figure_thr)
-        self.canvas_thr.setFixedHeight(300)
+        self.canvas_thr.setFixedHeight(250)
         self.ax_thr = self.figure_thr.add_subplot(111)
 
         self.ax_thr.set_xlim(-0.5, 15.5)
@@ -858,10 +858,10 @@ class TabInterface(QWidget):
         self.toolbar_thr = NavigationToolBar(self.canvas_thr, self, coordinates=False)
         self.toolbar_thr.setFixedHeight(25)
         self.toolbar_thr.setIconSize(QSize(20, 20))
-        self.toolbar_thr.layout().setSpacing(2)
+        self.toolbar_thr.layout().setSpacing(1)
         self.toolbar_thr.setStyleSheet("""
             QToolBar {
-                spacing: 10px;
+                spacing: 12px;
                 padding: 0px;
                 background-color: lavender;
             }
@@ -884,7 +884,7 @@ class TabInterface(QWidget):
 
         self.figure_adc_gain = Figure(figsize=(6, 5), dpi=100)
         self.canvas_adc_gain = FigureCanvas(self.figure_adc_gain)
-        self.canvas_adc_gain.setFixedHeight(300)
+        self.canvas_adc_gain.setFixedHeight(250)
         self.ax_adc_gain = self.figure_adc_gain.add_subplot(111)
 
         self.ax_adc_gain.set_xlim(-0.5, 15.5)
@@ -903,10 +903,10 @@ class TabInterface(QWidget):
         self.toolbar_adc_gain = NavigationToolBar(self.canvas_adc_gain, self, coordinates=False)
         self.toolbar_adc_gain.setFixedHeight(25)
         self.toolbar_adc_gain.setIconSize(QSize(20, 20))
-        self.toolbar_adc_gain.layout().setSpacing(2)
+        self.toolbar_adc_gain.layout().setSpacing(1)
         self.toolbar_adc_gain.setStyleSheet("""
             QToolBar {
-                spacing: 10px;
+                spacing: 12px;
                 padding: 0px;
                 background-color: lavender;
             }
