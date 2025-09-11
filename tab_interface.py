@@ -763,7 +763,7 @@ class TabInterface(QWidget):
 
         pscan_plot_layout1 = QGridLayout(pscan_plot_group1)
 
-        self.figure_enc = Figure(figsize=(6, 5), dpi=100)
+        self.figure_enc = Figure(figsize=(6, 4), dpi=100)
         self.canvas_enc = FigureCanvas(self.figure_enc)
         self.canvas_enc.setFixedHeight(250)
         self.ax_enc = self.figure_enc.add_subplot(111)
@@ -779,10 +779,10 @@ class TabInterface(QWidget):
         self.ax_enc.yaxis.label.set_fontsize(8)
         self.ax_enc.tick_params(axis='both', which='major', labelsize=7)
         self.ax_enc.grid(True, linestyle='--', alpha=0.5, linewidth=0.5)
-        self.figure_enc.tight_layout(pad=0.5)
+        self.figure_enc.tight_layout(h_pad=0.5)
 
         self.toolbar_enc = NavigationToolBar(self.canvas_enc, self, coordinates=False)
-        self.toolbar_enc.setFixedHeight(25)
+        self.toolbar_enc.setFixedHeight(20)
         self.toolbar_enc.setIconSize(QSize(20, 20))
         self.toolbar_enc.layout().setSpacing(1)
         self.toolbar_enc.setStyleSheet("""
@@ -837,7 +837,7 @@ class TabInterface(QWidget):
 
         pscan_plot_layout2 = QGridLayout(pscan_plot_group2)
 
-        self.figure_thr = Figure(figsize=(6, 5), dpi=100)
+        self.figure_thr = Figure(figsize=(6, 4), dpi=100)
         self.canvas_thr = FigureCanvas(self.figure_thr)
         self.canvas_thr.setFixedHeight(250)
         self.ax_thr = self.figure_thr.add_subplot(111)
@@ -853,10 +853,10 @@ class TabInterface(QWidget):
         self.ax_thr.yaxis.label.set_fontsize(8)
         self.ax_thr.tick_params(axis='both', which='major', labelsize=7)
         self.ax_thr.grid(True, linestyle='--', alpha=0.5, linewidth=0.5)
-        self.figure_thr.tight_layout(pad=0.5)
+        self.figure_thr.tight_layout(h_pad=0.5)
 
         self.toolbar_thr = NavigationToolBar(self.canvas_thr, self, coordinates=False)
-        self.toolbar_thr.setFixedHeight(25)
+        self.toolbar_thr.setFixedHeight(20)
         self.toolbar_thr.setIconSize(QSize(20, 20))
         self.toolbar_thr.layout().setSpacing(1)
         self.toolbar_thr.setStyleSheet("""
@@ -882,7 +882,7 @@ class TabInterface(QWidget):
         pscan_plot_layout2.addWidget(self.canvas_thr, 0, 0, Qt.AlignCenter)
         pscan_plot_layout2.addWidget(self.toolbar_thr, 1, 0, Qt.AlignCenter)
 
-        self.figure_adc_gain = Figure(figsize=(6, 5), dpi=100)
+        self.figure_adc_gain = Figure(figsize=(6, 4), dpi=100)
         self.canvas_adc_gain = FigureCanvas(self.figure_adc_gain)
         self.canvas_adc_gain.setFixedHeight(250)
         self.ax_adc_gain = self.figure_adc_gain.add_subplot(111)
@@ -898,10 +898,10 @@ class TabInterface(QWidget):
         self.ax_adc_gain.yaxis.label.set_fontsize(8)
         self.ax_adc_gain.tick_params(axis='both', which='major', labelsize=7)
         self.ax_adc_gain.grid(True, linestyle='--', alpha=0.5, linewidth=0.5)
-        self.figure_adc_gain.tight_layout(pad=0.5)
+        self.figure_adc_gain.tight_layout(h_pad=0.5)
 
         self.toolbar_adc_gain = NavigationToolBar(self.canvas_adc_gain, self, coordinates=False)
-        self.toolbar_adc_gain.setFixedHeight(25)
+        self.toolbar_adc_gain.setFixedHeight(20)
         self.toolbar_adc_gain.setIconSize(QSize(20, 20))
         self.toolbar_adc_gain.layout().setSpacing(1)
         self.toolbar_adc_gain.setStyleSheet("""
