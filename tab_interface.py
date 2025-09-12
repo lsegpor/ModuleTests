@@ -31,6 +31,9 @@ class TabInterface(QWidget):
         self.last_vddm_update_time = 0
         self.temp_colors = ["red", "yellow", "green", "blue"]
         self.default_save_path = "/home/cbm/cbmsoft/emu_test_module_arr/python/module_files/"
+        self.enc_datasets = []
+        self.thr_datasets = []
+        self.adc_gain_datasets = []
         
         if not hasattr(root, 'console_manager'):
             root.console_manager = ConsoleManager()
@@ -626,7 +629,7 @@ class TabInterface(QWidget):
                 background-color: lavender;
                 border: 1px solid black;
                 border-radius: 5px;
-                margin-top: 20px;
+                margin-top: 10px;
                 font-family: Helvetica;
                 font-size: 14px;
             }
@@ -634,7 +637,6 @@ class TabInterface(QWidget):
                 subcontrol-origin: margin;
                 subcontrol-position: top center;
                 padding: 0 5px;
-                margin-top: 10px;
                 background-color: lavender;
             }
         """)
@@ -1263,18 +1265,11 @@ class TabInterface(QWidget):
         
         title = canvas.figure.axes[0].get_title()
         
-        if "N-side" in title:
-            side = "N"
-        elif "P-side" in title:
-            side = "P"
-        else:
-            side = "unknown"
-        
         module_text = ""
         if hasattr(self, 'module_entry') and self.module_entry:
             module_text = self.module_entry.text()
         
-        default_filename = f"{module_text}_VDDM_{side}_{current_datetime}.png"
+        default_filename = f"{module_text}_{title}_{current_datetime}.png"
         
         if not hasattr(self, 'default_save_path') or not self.default_save_path:
             self.default_save_path = os.path.expanduser("~/cbmsoft/emu_test_module_arr/python/module_files/")
@@ -1312,6 +1307,18 @@ class TabInterface(QWidget):
 
     def save_figure_pside(self):
         self.active_canvas = self.canvas_pside
+        self.save_figure()
+
+    def save_figure_enc(self):
+        self.active_canvas = self.canvas_enc
+        self.save_figure()
+
+    def save_figure_thr(self):
+        self.active_canvas = self.canvas_thr
+        self.save_figure()
+
+    def save_figure_adc_gain(self):
+        self.active_canvas = self.canvas_adc_gain
         self.save_figure()
 
     def uplinks_length_warning(self, length):
@@ -1922,6 +1929,257 @@ class TabInterface(QWidget):
         self.ax_pside.grid(True, linestyle='--', alpha=0.5, linewidth=0.5)
         self.figure_pside.tight_layout()
         self.canvas_pside.draw()
+
+    def update_enc_plot(self):
+        self.ax_enc.clear()
+        
+        min_value = float('inf')
+        max_value = float('-inf')
+        
+        # Calculate limits considering error ranges
+        for _, values, error_ranges in self.enc_datasets:
+            if values and len(values) > 0 and error_ranges and len(error_ranges) > 0:
+                for value, error_range in zip(values, error_ranges):
+                    min_value = min(min_value, value - error_range)
+                    max_value = max(max_value, value + error_range)
+        
+        if min_value == float('inf') or max_value == float('-inf'):
+            min_value, max_value = 0, 5000
+        else:
+            range_value = max_value - min_value
+            margin = range_value * 0.1  # 10% margin
+            min_value = min_value - margin
+            max_value = max_value + margin
+        
+        self.ax_enc.set_ylim(min_value, max_value)
+        
+        self.ax_enc.xaxis.label.set_fontsize(8)
+        self.ax_enc.yaxis.label.set_fontsize(8)
+        self.ax_enc.title.set_fontsize(9)
+        self.ax_enc.tick_params(axis='both', which='major', labelsize=7)
+        
+        self.ax_enc.set_xlim(-0.5, 15.5)
+        self.ax_enc.set_xticks(range(16))
+        self.ax_enc.set_xticklabels(['N0', 'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 
+                                    'P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'])
+
+        # Draw data with crosses
+        for i, (index, values, error_ranges) in enumerate(self.enc_datasets):
+            if index and values and error_ranges and len(index) == len(values) == len(error_ranges):
+                color = plt.cm.tab10(i % 10)  # Different colors for each dataset
+
+                for x, y, error in zip(index, values, error_ranges):
+                    # Central point
+                    self.ax_enc.scatter(x, y, color=color, s=50, alpha=0.8, 
+                                    label=f'Measure {i+1}' if x == index[0] else "")
+                    
+                    # Horizontal line crossing the point
+                    self.ax_enc.hlines(y, x-0.3, x+0.3, colors=color, linewidth=2, alpha=0.7)
+                    
+                    # Vertical line of the error range
+                    self.ax_enc.vlines(x, y-error, y+error, colors=color, linewidth=2, alpha=0.7)
+        
+        if len(self.enc_datasets) > 1:
+            self.ax_enc.legend(fontsize=7, loc='best')
+        
+        self.ax_enc.set_title('ENC', fontsize=9)
+        self.ax_enc.grid(True, linestyle='--', alpha=0.5, linewidth=0.5)
+        self.figure_enc.subplots_adjust(top=0.9)
+        self.canvas_enc.draw()
+
+    def update_thr_plot(self):
+        self.ax_thr.clear()
+        
+        min_value = float('inf')
+        max_value = float('-inf')
+
+        # Calculate limits considering error ranges
+        for _, values, error_ranges in self.thr_datasets:
+            if values and len(values) > 0 and error_ranges and len(error_ranges) > 0:
+                for value, error_range in zip(values, error_ranges):
+                    min_value = min(min_value, value - error_range)
+                    max_value = max(max_value, value + error_range)
+        
+        if min_value == float('inf') or max_value == float('-inf'):
+            min_value, max_value = 8000, 14000
+        else:
+            range_value = max_value - min_value
+            margin = range_value * 0.1  # 10% margin
+            min_value = min_value - margin
+            max_value = max_value + margin
+        
+        self.ax_thr.set_ylim(min_value, max_value)
+        
+        self.ax_thr.xaxis.label.set_fontsize(8)
+        self.ax_thr.yaxis.label.set_fontsize(8)
+        self.ax_thr.title.set_fontsize(9)
+        self.ax_thr.tick_params(axis='both', which='major', labelsize=7)
+        
+        self.ax_thr.set_xlim(-0.5, 15.5)
+        self.ax_thr.set_xticks(range(16))
+        self.ax_thr.set_xticklabels(['N0', 'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 
+                                    'P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'])
+
+        # Draw data with crosses
+        for i, (index, values, error_ranges) in enumerate(self.thr_datasets):
+            if index and values and error_ranges and len(index) == len(values) == len(error_ranges):
+                color = plt.cm.tab10(i % 10)  # Different colors for each dataset
+
+                for x, y, error in zip(index, values, error_ranges):
+                    # Central point
+                    self.ax_thr.scatter(x, y, color=color, s=50, alpha=0.8, 
+                                    label=f'Measure {i+1}' if x == index[0] else "")
+                    
+                    # Horizontal line crossing the point
+                    self.ax_thr.hlines(y, x-0.3, x+0.3, colors=color, linewidth=2, alpha=0.7)
+                    
+                    # Vertical line of the error range
+                    self.ax_thr.vlines(x, y-error, y+error, colors=color, linewidth=2, alpha=0.7)
+        
+        if len(self.thr_datasets) > 1:
+            self.ax_thr.legend(fontsize=7, loc='best')
+        
+        self.ax_thr.set_title('Thr', fontsize=9)
+        self.ax_thr.grid(True, linestyle='--', alpha=0.5, linewidth=0.5)
+        self.figure_thr.subplots_adjust(top=0.9)
+        self.canvas_thr.draw()
+
+    def update_adc_gain_plot(self):
+        self.ax_adc_gain.clear()
+        
+        min_value = float('inf')
+        max_value = float('-inf')
+
+        # Calculate limits considering error ranges
+        for _, values, error_ranges in self.adc_gain_datasets:
+            if values and len(values) > 0 and error_ranges and len(error_ranges) > 0:
+                for value, error_range in zip(values, error_ranges):
+                    min_value = min(min_value, value - error_range)
+                    max_value = max(max_value, value + error_range)
+        
+        if min_value == float('inf') or max_value == float('-inf'):
+            min_value, max_value = 500, 4500
+        else:
+            range_value = max_value - min_value
+            margin = range_value * 0.1  # 10% margin
+            min_value = min_value - margin
+            max_value = max_value + margin
+        
+        self.ax_adc_gain.set_ylim(min_value, max_value)
+        
+        self.ax_adc_gain.xaxis.label.set_fontsize(8)
+        self.ax_adc_gain.yaxis.label.set_fontsize(8)
+        self.ax_adc_gain.title.set_fontsize(9)
+        self.ax_adc_gain.tick_params(axis='both', which='major', labelsize=7)
+        
+        self.ax_adc_gain.set_xlim(-0.5, 15.5)
+        self.ax_adc_gain.set_xticks(range(16))
+        self.ax_adc_gain.set_xticklabels(['N0', 'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 
+                                        'P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'])
+
+        # Draw data with crosses
+        for i, (index, values, error_ranges) in enumerate(self.adc_gain_datasets):
+            if index and values and error_ranges and len(index) == len(values) == len(error_ranges):
+                color = plt.cm.tab10(i % 10)  # Different colors for each dataset
+
+                for x, y, error in zip(index, values, error_ranges):
+                    # Central point
+                    self.ax_adc_gain.scatter(x, y, color=color, s=50, alpha=0.8, 
+                                        label=f'Measure {i+1}' if x == index[0] else "")
+                    
+                    # Horizontal line crossing the point
+                    self.ax_adc_gain.hlines(y, x-0.3, x+0.3, colors=color, linewidth=2, alpha=0.7)
+                    
+                    # Vertical line of the error range
+                    self.ax_adc_gain.vlines(x, y-error, y+error, colors=color, linewidth=2, alpha=0.7)
+        
+        if len(self.adc_gain_datasets) > 1:
+            self.ax_adc_gain.legend(fontsize=7, loc='best')
+        
+        self.ax_adc_gain.set_title('ADC gain', fontsize=9)
+        self.ax_adc_gain.grid(True, linestyle='--', alpha=0.5, linewidth=0.5)
+        self.figure_adc_gain.subplots_adjust(top=0.9)
+        self.canvas_adc_gain.draw()
+
+    def process_table_data(self, table_values):
+        """
+        Process the results table and extracts the organized data for the graphs
+
+        Parameters:
+        - table_values: list of lists with the table data
+
+        Returns:
+        - Dictionaries with index, values and errors for each type of graph
+        """
+
+        # Initialize structures to store organized data
+        enc_data = {'index': [], 'values': [], 'errors': []}
+        thr_data = {'index': [], 'values': [], 'errors': []}
+        adc_gain_data = {'index': [], 'values': [], 'errors': []}
+
+        # Process each row of the table
+        for row in table_values:
+            hw_addr = row[0]      # HW_Addr (0-7)
+            polarity = row[1]     # Polarity ('N' o 'P')
+            thr_mean = row[2]     # Thr (e)
+            thr_std = row[3]      # Thr_std (e)
+            gain_mean = row[4]    # Gain (e/LSB)
+            gain_std = row[5]     # Gain_std (e/LSB)
+            enc_mean = row[6]     # ENC (e)
+            enc_std = row[7]      # ENC_std (e)
+
+            # Calculate the index on the X axis (0-15)
+            if polarity == 'N':
+                x_index = hw_addr  # N0, N1, N2, ..., N7 → positions 0-7
+            elif polarity == 'P':
+                x_index = hw_addr + 8  # P0, P1, P2, ..., P7 → positions 8-15
+            else:
+                continue  # Skip if polarity is not valid
+
+            # Add data to structures
+            # ENC
+            enc_data['index'].append(x_index)
+            enc_data['values'].append(enc_mean)
+            enc_data['errors'].append(enc_std)
+            
+            # Threshold
+            thr_data['index'].append(x_index)
+            thr_data['values'].append(thr_mean)
+            thr_data['errors'].append(thr_std)
+            
+            # ADC Gain
+            adc_gain_data['index'].append(x_index)
+            adc_gain_data['values'].append(gain_mean)
+            adc_gain_data['errors'].append(gain_std)
+        
+        return enc_data, thr_data, adc_gain_data
+
+    def update_pscan_plots_from_table(self, table_values):
+        """
+        Update the plots based on the data from the results table.
+
+        Parameters:
+        - table_values: list of lists with the table data
+                    Format: [HW_Addr, Polarity, Thr(e), Thr_std(e), Gain(e/LSB), Gain_std(e/LSB), ENC(e), ENC_std(e), ...]
+        """
+
+        # Process the table data
+        enc_data, thr_data, adc_gain_data = self.process_table_data(table_values)
+
+        # Add data to datasets (only if there is valid data)
+        if enc_data['values']:
+            self.enc_datasets.append((enc_data['index'], enc_data['values'], enc_data['errors']))
+        
+        if thr_data['values']:
+            self.thr_datasets.append((thr_data['index'], thr_data['values'], thr_data['errors']))
+        
+        if adc_gain_data['values']:
+            self.adc_gain_datasets.append((adc_gain_data['index'], adc_gain_data['values'], adc_gain_data['errors']))
+
+        # Update the plots
+        self.update_enc_plot()
+        self.update_thr_plot()
+        self.update_adc_gain_plot()
     
     def update_checkboxes(self):
         if self.checkbox_vars_tests[0].isChecked():
@@ -2075,6 +2333,7 @@ class TabInterface(QWidget):
         self.worker.logSignal.connect(self.handle_log_message)
         self.worker.emuSignal.connect(self.update_emu_values)
         self.worker.vddmSignal.connect(self.update_vddm_plot)
+        self.worker.pscanPlotSignal.connect(self.update_pscan_plots_from_table)
         self.worker.tempSignal.connect(self.update_temp_checkboxes)
         self.worker.clearSignal.connect(self.clear_checkbox_colors)
         self.worker.efuseidWarningSignal.connect(self.show_efuse_duplicate_warning)

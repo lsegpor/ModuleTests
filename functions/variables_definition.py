@@ -23,6 +23,8 @@ class VariablesDefinition:
         self.stored_temp_values = { "N": [], "P": [] }
         self.measured_asic_addresses = { "N": [], "P": [] }
         self.log = logging.getLogger()
+        self.asic_nside_hw_efuse_pairs = []
+        self.asic_pside_hw_efuse_pairs = []
 
     #["EMU_213"]     # List of EMU boards used during the test
     #emu_list = ["EMU_236"]

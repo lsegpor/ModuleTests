@@ -211,6 +211,8 @@ class OperatingFunctions:
         asic_info_list = []
         efuse_str_registry = {}
         efuse_int_registry = {}
+        asic_nside_hw_efuse_pairs = []
+        asic_pside_hw_efuse_pairs = []
         
         for asic_sw in feb_type_sw:
             for smx in smx_l_side:
@@ -229,6 +231,12 @@ class OperatingFunctions:
                             'efuse_int': asic_id_int,
                             'smx_obj': smx
                         }
+
+                        if pol_str == "N-side":
+                            asic_nside_hw_efuse_pairs.append((addr, asic_id_str))
+                        else:
+                            asic_pside_hw_efuse_pairs.append((addr, asic_id_str))
+
                         asic_info_list.append(asic_info)
                         
                         if asic_id_str in efuse_str_registry:
@@ -253,7 +261,10 @@ class OperatingFunctions:
         validation_result = self.validate_efuse_uniqueness(
             efuse_str_registry, efuse_int_registry, pol_str, feb_type
         )
-        
+
+        self.vd.asic_nside_hw_efuse_pairs = asic_nside_hw_efuse_pairs
+        self.vd.asic_pside_hw_efuse_pairs = asic_pside_hw_efuse_pairs
+
         return validation_result
     
     def write_duplicate_summary_to_file(self, duplicate_str_details, duplicate_int_details, pol_str):
@@ -360,11 +371,11 @@ class OperatingFunctions:
                 if pol == "N" or pol == "0":
                     self.vd.stored_vddm_values["N"].append(asic_vddm[1])
                     self.vd.stored_temp_values["N"].append(asic_temp[1])
-                    self.vd.measured_asic_addresses["N"].append(asic_sw)  # NUEVO: Rastrear dirección real
+                    self.vd.measured_asic_addresses["N"].append(asic_sw)
                 else:
                     self.vd.stored_vddm_values["P"].append(asic_vddm[1])
                     self.vd.stored_temp_values["P"].append(asic_temp[1])
-                    self.vd.measured_asic_addresses["P"].append(asic_sw)  # NUEVO: Rastrear dirección real
+                    self.vd.measured_asic_addresses["P"].append(asic_sw)
                     
                 info = "{} \t\t {} \t\t {} \t\t\t {} \t {:.1f} \t\t\t {:.1f} \t {:.1f}".format(feb_type, pol_str, smx.address, asic_vddm[0], asic_vddm[1], asic_temp[0], asic_temp[1])
                 self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)

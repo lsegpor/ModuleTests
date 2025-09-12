@@ -364,7 +364,7 @@ class Main:
             raise
 
     def execute_tests(self, module, sn_nside, sn_pside, slc_nside, slc_pside, emu, tests_values, s_size,
-                      s_qgrade, asic_nside_values, asic_pside_values, suid, lv_nside_12_checked,
+                      s_qgrade, asic_nside_values, asic_pside_values, suid, lv_nside_12_checked, update_pscan,
                       lv_pside_12_checked, lv_nside_18_checked, lv_pside_18_checked, module_files, calib_path,
                       update_progress, update_test_label, update_emu_values, update_vddm, update_temp, clear_temp,
                       efuse_warning, uplinks_warning, update_feb_nside, update_feb_pside, update_calib_path,
@@ -656,16 +656,6 @@ class Main:
                                 self.smx_l_nside = []
                             if not hasattr(self, 'smx_l_pside') or self.smx_l_pside is None:
                                 self.smx_l_pside = []
-
-                    print(f"🔍 Initializing analysis for ladder: {self.vd.ladder_sn}, module: {self.vd.module_sn}")
-
-                    results = process_p_scan_files(self.vd.ladder_sn, self.vd.module_sn)
-
-                    if results is not None:
-                        print(f"Successful processing for {self.vd.ladder_sn}/{self.vd.module_sn}")
-                        print(f"Processed {len(results)} files")
-                    else:
-                        print(f"Error processing {self.vd.ladder_sn}/{self.vd.module_sn}")
 
                     accumulated_progress += step_percentage
                     update_progress(accumulated_progress)
@@ -1072,6 +1062,18 @@ class Main:
                         tab_id, 
                         pscan_dir
                     )
+
+                    print(f"🔍 Initializing analysis for ladder: {self.vd.ladder_sn}, module: {self.vd.module_sn}")
+
+                    results = process_p_scan_files(self.vd.ladder_sn, self.vd.module_sn, self.vd.asic_nside_hw_efuse_pairs, self.vd.asic_pside_hw_efuse_pairs)
+
+                    if results is not None:
+                        print(f"Successful processing for {self.vd.ladder_sn}/{self.vd.module_sn}")
+                        print(f"Processed {len(results)} files")
+
+                        update_pscan(results)
+                    else:
+                        print(f"Error processing {self.vd.ladder_sn}/{self.vd.module_sn}")
                     
                     accumulated_progress += step_percentage
                     update_progress(accumulated_progress)

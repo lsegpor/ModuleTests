@@ -19,6 +19,8 @@ from scripts.plotting import plot_s_curve
 from scripts.plotting import plot_linear_fit
 from scripts.plotting import plot_histogram
 
+from functions.variables_definition import VariablesDefinition as vd
+
 from tabulate import tabulate
 
 import os
@@ -139,7 +141,7 @@ def process_channel(df, adc_list, chn):
 
     return results
 
-def process_p_scan_files(ladder_sn, module_sn, files_idx=None, q_lim=68):
+def process_p_scan_files(ladder_sn, module_sn, asic_nside_hw_efuse_pairs, asic_pside_hw_efuse_pairs, files_idx=None, q_lim=68):
     # Relative route from utils/ to pscan_files/
     source_dir = f"/home/cbm/cbmsoft/emu_test_module_arr/python/module_files/{ladder_sn}/{module_sn}/pscan_files"
     
@@ -149,14 +151,39 @@ def process_p_scan_files(ladder_sn, module_sn, files_idx=None, q_lim=68):
         return
 
     files = os.listdir(source_dir)
-    logger.debug(f"📁 DEBUG: {len(files)} files found in total")
+    #logger.debug(f"📁 DEBUG: {len(files)} files found in total")
 
     txt_files = [f for f in files if f.endswith('.txt')]
-    logger.debug(f"📝 DEBUG: {len(txt_files)} .txt files found")
+    #logger.debug(f"📝 DEBUG: {len(txt_files)} .txt files found")
 
     if not txt_files:
-        logger.warning(f"⚠️ DEBUG: No .txt files found in {source_dir}")
+        logger.warning(f"⚠️ WARNING: No .txt files found in {source_dir}")
         return None
+    
+    # efuse_id -> (hw_addr, polarity)
+    efuse_to_hw_pol = {}
+    
+    # Process N-side pairs
+    if asic_nside_hw_efuse_pairs:
+        if isinstance(asic_nside_hw_efuse_pairs[0], tuple):
+            # Tuple list (hw_addr, efuse_str)
+            for hw_addr, efuse_str in asic_nside_hw_efuse_pairs:
+                efuse_to_hw_pol[efuse_str] = (hw_addr, 'N')
+        elif isinstance(asic_nside_hw_efuse_pairs[0], dict):
+            # Dictionaries list
+            for pair in asic_nside_hw_efuse_pairs:
+                efuse_to_hw_pol[pair['efuse_str']] = (pair['hw_addr'], 'N')
+    
+    # Process P-side pairs
+    if asic_pside_hw_efuse_pairs:
+        if isinstance(asic_pside_hw_efuse_pairs[0], tuple):
+            # Tuple list (hw_addr, efuse_str)
+            for hw_addr, efuse_str in asic_pside_hw_efuse_pairs:
+                efuse_to_hw_pol[efuse_str] = (hw_addr, 'P')
+        elif isinstance(asic_pside_hw_efuse_pairs[0], dict):
+            # Dictionaries list
+            for pair in asic_pside_hw_efuse_pairs:
+                efuse_to_hw_pol[pair['efuse_str']] = (pair['hw_addr'], 'P')
     
     table_values = []
 
@@ -166,6 +193,23 @@ def process_p_scan_files(ladder_sn, module_sn, files_idx=None, q_lim=68):
         files = txt_files
 
     for f_name in files:
+        # Extract EFUSE ID from the filename
+        # Pattern: search between _ and _HW_
+        efuse_match = re.search(r"_([^_]+)_HW_", f_name)
+        if not efuse_match:
+            logger.warning(f"Couldn't extract EFUSE ID from file: {f_name}")
+            continue
+            
+        efuse_id = efuse_match.group(1)
+
+        # Search for the HW address and corresponding polarity
+        if efuse_id not in efuse_to_hw_pol:
+            logger.warning(f"EFUSE ID '{efuse_id}' not found in pair lists for file: {f_name}")
+            continue
+            
+        hw_addr, polarity = efuse_to_hw_pol[efuse_id]
+        logger.info(f"File: {f_name}")
+        logger.info(f"EFUSE ID: {efuse_id} -> HW Address: {hw_addr}, Polarity: {polarity}")
 
         """ Search the number of injected pulses in the filename
             If not found, assume 1 pulse, so the normalization will not change the data
@@ -245,7 +289,7 @@ def process_p_scan_files(ladder_sn, module_sn, files_idx=None, q_lim=68):
         q_str = f"{np.sum(q_scores)/128:.4f}"
         if np.sum(q_scores) > q_lim:
             q_str = f"{q_str} *** warning ***"
-        table_values.append([f_name] + [x for v in (thre, gain, enc) for x in (np.mean(v), np.std(v))] + [q_str, int(np.sum(q_scores[1::2])), int(np.sum(q_scores[::2]))])
+        table_values.append([hw_addr, polarity] + [x for v in (thre, gain, enc) for x in (np.mean(v), np.std(v))] + [q_str, int(np.sum(q_scores[1::2])), int(np.sum(q_scores[::2]))])
 
         # if generate_file_summary:
         #     labels = ['Empty Channel']
@@ -268,7 +312,7 @@ def process_p_scan_files(ladder_sn, module_sn, files_idx=None, q_lim=68):
             plt.savefig(f"images/{f_name}_thr_gain.png", dpi=300)
             plt.close()
 
-    table_labels = ['File', 'Thr (e)', 'Thr_std (e)', 'Gain (e/LSB)', 'Gain_std (e/LSB)', 'ENC (e)', 'ENC_std (e)', 'Q_score', 'Odd_failed', 'Even_failed']
+    table_labels = ['HW_Addr', 'Polarity', 'Thr (e)', 'Thr_std (e)', 'Gain (e/LSB)', 'Gain_std (e/LSB)', 'ENC (e)', 'ENC_std (e)', 'Q_score', 'Odd_failed', 'Even_failed']
     logger.info(f"Summary:\n{tabulate(table_values, headers=table_labels, tablefmt='simple', floatfmt='.0f')}")
 
     return table_values

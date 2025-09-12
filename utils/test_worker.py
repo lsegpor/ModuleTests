@@ -12,6 +12,7 @@ class TestWorker(QObject):
     logSignal = pyqtSignal(str, str)
     emuSignal = pyqtSignal(float, float)
     vddmSignal = pyqtSignal(list, list, list, list, list, list)
+    pscanPlotSignal = pyqtSignal(list)
     tempSignal = pyqtSignal(list, list, list, list, list, list)
     clearSignal = pyqtSignal()
     febnsideSignal = pyqtSignal(float, float, float, float, str)
@@ -183,6 +184,11 @@ class TestWorker(QObject):
                     if self.stop_requested:
                         return
                     self.vddmSignal.emit(n_idx, n_val, p_idx, p_val, n_mval, p_mval)
+
+                def update_pscan(pscan_values):
+                    if self.stop_requested:
+                        return
+                    self.pscanPlotSignal.emit(pscan_values)
                     
                 def update_temp(n_idx, n_val, p_idx, p_val, n_mval, p_mval):
                     if self.stop_requested:
@@ -237,7 +243,7 @@ class TestWorker(QObject):
                     lv_nside_12_checked, lv_pside_12_checked, lv_nside_18_checked, lv_pside_18_checked,
                     module_files, calib_path, update_progress, update_test_label, update_emu_values,
                     update_vddm, update_temp, clear_temp, efuse_warning, uplinks_warning, update_feb_nside,
-                    update_feb_pside, update_calib_path, update_save_path, self.tab_num,
+                    update_feb_pside, update_calib_path, update_save_path, self.tab_num, update_pscan,
                     check_continue, self
                 )
                 
