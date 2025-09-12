@@ -210,11 +210,6 @@ class TestWorker(QObject):
                         return
                     self.uplinksWarningSignal.emit(length)
                     
-                def uplinks_warning(length):
-                    if self.stop_requested:
-                        return
-                    self.uplinksWarningSignal.emit(length)
-                    
                 def update_feb_nside(v12_val, i12_val, v18_val, i18_val, test):
                     if self.stop_requested:
                         return
@@ -242,8 +237,8 @@ class TestWorker(QObject):
                     test_values, s_size, s_qgrade, asic_nside_values, asic_pside_values, suid,
                     lv_nside_12_checked, lv_pside_12_checked, lv_nside_18_checked, lv_pside_18_checked,
                     module_files, calib_path, update_progress, update_test_label, update_emu_values,
-                    update_vddm, update_temp, clear_temp, efuse_warning, uplinks_warning, update_feb_nside,
-                    update_feb_pside, update_calib_path, update_save_path, self.tab_num, update_pscan,
+                    update_vddm, update_pscan, update_temp, clear_temp, efuse_warning, uplinks_warning,
+                    update_feb_nside, update_feb_pside, update_calib_path, update_save_path, self.tab_num,
                     check_continue, self
                 )
                 

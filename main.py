@@ -364,11 +364,12 @@ class Main:
             raise
 
     def execute_tests(self, module, sn_nside, sn_pside, slc_nside, slc_pside, emu, tests_values, s_size,
-                      s_qgrade, asic_nside_values, asic_pside_values, suid, lv_nside_12_checked, update_pscan,
+                      s_qgrade, asic_nside_values, asic_pside_values, suid, lv_nside_12_checked,
                       lv_pside_12_checked, lv_nside_18_checked, lv_pside_18_checked, module_files, calib_path,
-                      update_progress, update_test_label, update_emu_values, update_vddm, update_temp, clear_temp,
-                      efuse_warning, uplinks_warning, update_feb_nside, update_feb_pside, update_calib_path,
-                      update_save_path, tab_id, check_continue=None, worker_instance=None):
+                      update_progress, update_test_label, update_emu_values, update_vddm, update_pscan,
+                      update_temp, clear_temp, efuse_warning, uplinks_warning, update_feb_nside,
+                      update_feb_pside, update_calib_path, update_save_path, tab_id, check_continue=None,
+                      worker_instance=None):
         
         if not self._execute_lock.acquire(blocking=False):
             raise Exception(f"Another test is already running in this tab (Tab {tab_id})")
