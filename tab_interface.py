@@ -1979,9 +1979,9 @@ class TabInterface(QWidget):
                 n_side_data = [(x, y, e) for x, y, e in sorted_data if x < 8]
                 p_side_data = [(x, y, e) for x, y, e in sorted_data if x >= 8]
                 
-                # Colors for N-side and P-side
-                n_color = plt.cm.tab10(1)  # Orange
-                p_color = plt.cm.tab10(0)  # Blue
+                # Colors: N-side = RED, P-side = BLUE
+                n_color = 'red'
+                p_color = 'blue'
                 
                 # Draw N-side data if exists
                 if n_side_data:
@@ -2059,9 +2059,9 @@ class TabInterface(QWidget):
                 n_side_data = [(x, y, e) for x, y, e in sorted_data if x < 8]
                 p_side_data = [(x, y, e) for x, y, e in sorted_data if x >= 8]
                 
-                # Colors for N-side and P-side
-                n_color = plt.cm.tab10(1)  # Orange
-                p_color = plt.cm.tab10(0)  # Blue
+                # Colors: N-side = RED, P-side = BLUE
+                n_color = 'red'
+                p_color = 'blue'
                 
                 # Draw N-side data if exists
                 if n_side_data:
@@ -2141,9 +2141,9 @@ class TabInterface(QWidget):
                 n_side_data = [(x, y, e) for x, y, e in sorted_data if x < 8]
                 p_side_data = [(x, y, e) for x, y, e in sorted_data if x >= 8]
                 
-                # Colors for N-side and P-side
-                n_color = plt.cm.tab10(1)  # Orange
-                p_color = plt.cm.tab10(0)  # Blue
+                # Colors: N-side = RED, P-side = BLUE
+                n_color = 'red'
+                p_color = 'blue'
                 
                 # Draw N-side data if exists
                 if n_side_data:
@@ -2248,6 +2248,21 @@ class TabInterface(QWidget):
             self.adc_gain_datasets.append((adc_gain_data['index'], adc_gain_data['values'], adc_gain_data['errors']))
 
         # Update the plots
+        self.update_enc_plot()
+        self.update_thr_plot()
+        self.update_adc_gain_plot()
+
+    def clear_pscan_plots(self):
+        """
+        Clear all plot datasets when starting new tests.
+        Call this function at the beginning of each test run.
+        """
+        # Clear all datasets
+        self.enc_datasets = []
+        self.thr_datasets = []
+        self.adc_gain_datasets = []
+        
+        # Clear and redraw empty plots
         self.update_enc_plot()
         self.update_thr_plot()
         self.update_adc_gain_plot()
@@ -2407,6 +2422,7 @@ class TabInterface(QWidget):
         self.worker.pscanPlotSignal.connect(self.update_pscan_plots_from_table)
         self.worker.tempSignal.connect(self.update_temp_checkboxes)
         self.worker.clearSignal.connect(self.clear_checkbox_colors)
+        self.worker.clearPscanSignal.connect(self.clear_pscan_plots)
         self.worker.efuseidWarningSignal.connect(self.show_efuse_duplicate_warning)
         self.worker.uplinksWarningSignal.connect(self.uplinks_length_warning)
         self.worker.febnsideSignal.connect(self.update_feb_nside)

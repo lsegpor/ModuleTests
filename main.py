@@ -367,7 +367,7 @@ class Main:
                       s_qgrade, asic_nside_values, asic_pside_values, suid, lv_nside_12_checked,
                       lv_pside_12_checked, lv_nside_18_checked, lv_pside_18_checked, module_files, calib_path,
                       update_progress, update_test_label, update_emu_values, update_vddm, update_pscan,
-                      update_temp, clear_temp, efuse_warning, uplinks_warning, update_feb_nside,
+                      update_temp, clear_temp, clear_pscan, efuse_warning, uplinks_warning, update_feb_nside,
                       update_feb_pside, update_calib_path, update_save_path, tab_id, check_continue=None,
                       worker_instance=None):
         
@@ -385,6 +385,7 @@ class Main:
         
         try:
             clear_temp()
+            clear_pscan()
             
             self.vd.setValues(module, emu, module_files, calib_path)
             self.vd.selected_tests(tests_values)
