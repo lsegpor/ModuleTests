@@ -386,6 +386,9 @@ class Main:
         try:
             clear_temp()
             clear_pscan()
+
+            self.vd.asic_nside_hw_efuse_pairs = []
+            self.vd.asic_pside_hw_efuse_pairs = []
             
             self.vd.setValues(module, emu, module_files, calib_path)
             self.vd.selected_tests(tests_values)
