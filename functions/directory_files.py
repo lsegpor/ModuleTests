@@ -28,7 +28,7 @@ class DirectoryFiles:
     def read_moduleId(self, module):
         #module_sn = "M5UR3B2011342B2"
         module_sn = module
-        match = re.match(r"M([0-7][DU])([LR][0-7])(T[0-4]|B[0-4])(0[01])(\d{3})([0-4])(A2|B2)", module_sn)
+        match = re.match(r"M([0-8][DU])([LR][0-8])(T[0-4]|B[0-4])(0[01])(\d{3})([0-4])(A2|B2)", module_sn)
         
         if match:
             if match.group(3)[1] == match.group(6):
