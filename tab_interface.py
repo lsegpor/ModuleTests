@@ -1932,6 +1932,10 @@ class TabInterface(QWidget):
 
     def update_enc_plot(self):
         self.ax_enc.clear()
+
+        # Clear old datasets - keep only the most recent one
+        if len(self.enc_datasets) > 1:
+            self.enc_datasets = [self.enc_datasets[-1]]
         
         min_value = float('inf')
         max_value = float('-inf')
@@ -1944,7 +1948,7 @@ class TabInterface(QWidget):
                     max_value = max(max_value, value + error_range)
         
         if min_value == float('inf') or max_value == float('-inf'):
-            min_value, max_value = 0, 5000
+            min_value, max_value = 0, 6000
         else:
             range_value = max_value - min_value
             margin = range_value * 0.1  # 10% margin
@@ -1967,21 +1971,39 @@ class TabInterface(QWidget):
         if self.enc_datasets:
             index, values, error_ranges = self.enc_datasets[-1]
             if index and values and error_ranges and len(index) == len(values) == len(error_ranges):
-                color = plt.cm.tab10(0)  # Use consistent color
-
+                
                 # Sort data by index to ensure proper connection order
                 sorted_data = sorted(zip(index, values, error_ranges))
-                sorted_index, sorted_values, sorted_errors = zip(*sorted_data)
 
-                # Connect points with lines (sorted)
-                self.ax_enc.plot(sorted_index, sorted_values, color=color, linewidth=1.5, alpha=0.8)
+                # Separate N-side (0-7) and P-side (8-15) data
+                n_side_data = [(x, y, e) for x, y, e in sorted_data if x < 8]
+                p_side_data = [(x, y, e) for x, y, e in sorted_data if x >= 8]
+                
+                # Colors for N-side and P-side
+                n_color = plt.cm.tab10(1)  # Orange
+                p_color = plt.cm.tab10(0)  # Blue
+                
+                # Draw N-side data if exists
+                if n_side_data:
+                    n_index, n_values, n_errors = zip(*n_side_data)
+                    self.ax_enc.plot(n_index, n_values, color=n_color, linewidth=1.5, alpha=0.8, label='N-side')
+                    
+                    for x, y, error in zip(n_index, n_values, n_errors):
+                        self.ax_enc.scatter(x, y, color=n_color, s=50, alpha=0.8)
+                        self.ax_enc.vlines(x, y-error, y+error, colors=n_color, linewidth=2, alpha=0.7)
 
-                for x, y, error in zip(sorted_index, sorted_values, sorted_errors):
-                    # Central point
-                    self.ax_enc.scatter(x, y, color=color, s=50, alpha=0.8)
+                # Draw P-side data if exists
+                if p_side_data:
+                    p_index, p_values, p_errors = zip(*p_side_data)
+                    self.ax_enc.plot(p_index, p_values, color=p_color, linewidth=1.5, alpha=0.8, label='P-side')
 
-                    # Vertical line of the error range
-                    self.ax_enc.vlines(x, y-error, y+error, colors=color, linewidth=2, alpha=0.7)
+                    for x, y, error in zip(p_index, p_values, p_errors):
+                        self.ax_enc.scatter(x, y, color=p_color, s=50, alpha=0.8)
+                        self.ax_enc.vlines(x, y-error, y+error, colors=p_color, linewidth=2, alpha=0.7)
+
+                # Add legend if both sides have data
+                if n_side_data and p_side_data:
+                    self.ax_enc.legend(fontsize=7, loc='best')
 
         self.ax_enc.set_title('ENC', fontsize=9)
         self.ax_enc.grid(True, linestyle='--', alpha=0.5, linewidth=0.5)
@@ -1990,7 +2012,11 @@ class TabInterface(QWidget):
 
     def update_thr_plot(self):
         self.ax_thr.clear()
-        
+
+        # Clear old datasets - keep only the most recent one
+        if len(self.thr_datasets) > 1:
+            self.thr_datasets = [self.thr_datasets[-1]]
+
         min_value = float('inf')
         max_value = float('-inf')
 
@@ -2002,7 +2028,7 @@ class TabInterface(QWidget):
                     max_value = max(max_value, value + error_range)
         
         if min_value == float('inf') or max_value == float('-inf'):
-            min_value, max_value = 8000, 14000
+            min_value, max_value = 7000, 15000
         else:
             range_value = max_value - min_value
             margin = range_value * 0.1  # 10% margin
@@ -2025,21 +2051,39 @@ class TabInterface(QWidget):
         if self.thr_datasets:
             index, values, error_ranges = self.thr_datasets[-1]
             if index and values and error_ranges and len(index) == len(values) == len(error_ranges):
-                color = plt.cm.tab10(0)  # Use consistent color
 
                 # Sort data by index to ensure proper connection order
                 sorted_data = sorted(zip(index, values, error_ranges))
-                sorted_index, sorted_values, sorted_errors = zip(*sorted_data)
 
-                # Connect points with lines (sorted)
-                self.ax_thr.plot(sorted_index, sorted_values, color=color, linewidth=1.5, alpha=0.8)
+                # Separate N-side (0-7) and P-side (8-15) data
+                n_side_data = [(x, y, e) for x, y, e in sorted_data if x < 8]
+                p_side_data = [(x, y, e) for x, y, e in sorted_data if x >= 8]
+                
+                # Colors for N-side and P-side
+                n_color = plt.cm.tab10(1)  # Orange
+                p_color = plt.cm.tab10(0)  # Blue
+                
+                # Draw N-side data if exists
+                if n_side_data:
+                    n_index, n_values, n_errors = zip(*n_side_data)
+                    self.ax_thr.plot(n_index, n_values, color=n_color, linewidth=1.5, alpha=0.8, label='N-side')
+                    
+                    for x, y, error in zip(n_index, n_values, n_errors):
+                        self.ax_thr.scatter(x, y, color=n_color, s=50, alpha=0.8)
+                        self.ax_thr.vlines(x, y-error, y+error, colors=n_color, linewidth=2, alpha=0.7)
 
-                for x, y, error in zip(sorted_index, sorted_values, sorted_errors):
-                    # Central point
-                    self.ax_thr.scatter(x, y, color=color, s=50, alpha=0.8)
+                # Draw P-side data if exists
+                if p_side_data:
+                    p_index, p_values, p_errors = zip(*p_side_data)
+                    self.ax_thr.plot(p_index, p_values, color=p_color, linewidth=1.5, alpha=0.8, label='P-side')
 
-                    # Vertical line of the error range
-                    self.ax_thr.vlines(x, y-error, y+error, colors=color, linewidth=2, alpha=0.7)
+                    for x, y, error in zip(p_index, p_values, p_errors):
+                        self.ax_thr.scatter(x, y, color=p_color, s=50, alpha=0.8)
+                        self.ax_thr.vlines(x, y-error, y+error, colors=p_color, linewidth=2, alpha=0.7)
+
+                # Add legend if both sides have data
+                if n_side_data and p_side_data:
+                    self.ax_thr.legend(fontsize=7, loc='best')
 
         self.ax_thr.set_title('Thr', fontsize=9)
         self.ax_thr.grid(True, linestyle='--', alpha=0.5, linewidth=0.5)
@@ -2048,6 +2092,10 @@ class TabInterface(QWidget):
 
     def update_adc_gain_plot(self):
         self.ax_adc_gain.clear()
+
+        # Clear old datasets - keep only the most recent one
+        if len(self.adc_gain_datasets) > 1:
+            self.adc_gain_datasets = [self.adc_gain_datasets[-1]]
         
         min_value = float('inf')
         max_value = float('-inf')
@@ -2062,7 +2110,7 @@ class TabInterface(QWidget):
                     max_value = max(max_value, value + error_range)
         
         if min_value == float('inf') or max_value == float('-inf'):
-            min_value, max_value = 500, 4500
+            min_value, max_value = 0, 5000
         else:
             range_value = max_value - min_value
             margin = range_value * 0.1  # 10% margin
@@ -2085,21 +2133,39 @@ class TabInterface(QWidget):
         if self.adc_gain_datasets:
             index, values, error_ranges = self.adc_gain_datasets[-1]
             if index and values and error_ranges and len(index) == len(values) == len(error_ranges):
-                color = plt.cm.tab10(0)  # Use consistent color
 
                 # Sort data by index to ensure proper connection order
                 sorted_data = sorted(zip(index, values, error_ranges))
-                sorted_index, sorted_values, sorted_errors = zip(*sorted_data)
 
-                # Connect points with lines (sorted)
-                self.ax_adc_gain.plot(sorted_index, sorted_values, color=color, linewidth=1.5, alpha=0.8)
-
-                for x, y, error in zip(sorted_index, sorted_values, sorted_errors):
-                    # Central point
-                    self.ax_adc_gain.scatter(x, y, color=color, s=50, alpha=0.8)
+                # Separate N-side (0-7) and P-side (8-15) data
+                n_side_data = [(x, y, e) for x, y, e in sorted_data if x < 8]
+                p_side_data = [(x, y, e) for x, y, e in sorted_data if x >= 8]
+                
+                # Colors for N-side and P-side
+                n_color = plt.cm.tab10(1)  # Orange
+                p_color = plt.cm.tab10(0)  # Blue
+                
+                # Draw N-side data if exists
+                if n_side_data:
+                    n_index, n_values, n_errors = zip(*n_side_data)
+                    self.ax_adc_gain.plot(n_index, n_values, color=n_color, linewidth=1.5, alpha=0.8, label='N-side')
                     
-                    # Vertical line of the error range
-                    self.ax_adc_gain.vlines(x, y-error, y+error, colors=color, linewidth=2, alpha=0.7)
+                    for x, y, error in zip(n_index, n_values, n_errors):
+                        self.ax_adc_gain.scatter(x, y, color=n_color, s=50, alpha=0.8)
+                        self.ax_adc_gain.vlines(x, y-error, y+error, colors=n_color, linewidth=2, alpha=0.7)
+                
+                # Draw P-side data if exists
+                if p_side_data:
+                    p_index, p_values, p_errors = zip(*p_side_data)
+                    self.ax_adc_gain.plot(p_index, p_values, color=p_color, linewidth=1.5, alpha=0.8, label='P-side')
+                    
+                    for x, y, error in zip(p_index, p_values, p_errors):
+                        self.ax_adc_gain.scatter(x, y, color=p_color, s=50, alpha=0.8)
+                        self.ax_adc_gain.vlines(x, y-error, y+error, colors=p_color, linewidth=2, alpha=0.7)
+                
+                # Add legend if both sides have data
+                if n_side_data and p_side_data:
+                    self.ax_adc_gain.legend(fontsize=7, loc='best')
         
         self.ax_adc_gain.set_title('ADC gain', fontsize=9)
         self.ax_adc_gain.grid(True, linestyle='--', alpha=0.5, linewidth=0.5)
