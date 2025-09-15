@@ -1973,7 +1973,7 @@ class TabInterface(QWidget):
                     self.ax_enc.scatter(x, y, color=color, s=50, alpha=0.8, 
                                     label=f'Measure {i+1}' if x == index[0] else "")
                     
-                    # Horizontal line crossing the point
+                    # Horizontal line crossing the point (always at value 1)
                     self.ax_enc.hlines(1, x-0.3, x+0.3, colors=color, linewidth=2, alpha=0.7)
                     
                     # Vertical line of the error range
@@ -2030,7 +2030,7 @@ class TabInterface(QWidget):
                     self.ax_thr.scatter(x, y, color=color, s=50, alpha=0.8, 
                                     label=f'Measure {i+1}' if x == index[0] else "")
                     
-                    # Horizontal line crossing the point
+                    # Horizontal line crossing the point (always at value 1)
                     self.ax_thr.hlines(1, x-0.3, x+0.3, colors=color, linewidth=2, alpha=0.7)
                     
                     # Vertical line of the error range
@@ -2050,8 +2050,10 @@ class TabInterface(QWidget):
         min_value = float('inf')
         max_value = float('-inf')
 
-        # Calculate limits considering error ranges
-        for _, values, error_ranges in self.adc_gain_datasets:
+        # Only process the last (most recent) dataset
+        if self.adc_gain_datasets:
+            _, values, error_ranges = self.adc_gain_datasets[-1]  # Get only the last dataset
+            
             if values and len(values) > 0 and error_ranges and len(error_ranges) > 0:
                 for value, error_range in zip(values, error_ranges):
                     min_value = min(min_value, value - error_range)
@@ -2077,24 +2079,21 @@ class TabInterface(QWidget):
         self.ax_adc_gain.set_xticklabels(['N0', 'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 
                                         'P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'])
 
-        # Draw data with crosses
-        for i, (index, values, error_ranges) in enumerate(self.adc_gain_datasets):
+        # Draw data with connected points and error bars (only the last dataset)
+        if self.adc_gain_datasets:
+            index, values, error_ranges = self.adc_gain_datasets[-1]
             if index and values and error_ranges and len(index) == len(values) == len(error_ranges):
-                color = plt.cm.tab10(i % 10)  # Different colors for each dataset
+                color = plt.cm.tab10(0)  # Use consistent color
+
+                # Connect points with lines
+                self.ax_adc_gain.plot(index, values, color=color, linewidth=1.5, alpha=0.8)
 
                 for x, y, error in zip(index, values, error_ranges):
                     # Central point
-                    self.ax_adc_gain.scatter(x, y, color=color, s=50, alpha=0.8, 
-                                        label=f'Measure {i+1}' if x == index[0] else "")
-                    
-                    # Horizontal line crossing the point
-                    self.ax_adc_gain.hlines(1, x-0.3, x+0.3, colors=color, linewidth=2, alpha=0.7)
+                    self.ax_adc_gain.scatter(x, y, color=color, s=50, alpha=0.8)
                     
                     # Vertical line of the error range
                     self.ax_adc_gain.vlines(x, y-error, y+error, colors=color, linewidth=2, alpha=0.7)
-        
-        if len(self.adc_gain_datasets) > 1:
-            self.ax_adc_gain.legend(fontsize=7, loc='best')
         
         self.ax_adc_gain.set_title('ADC gain', fontsize=9)
         self.ax_adc_gain.grid(True, linestyle='--', alpha=0.5, linewidth=0.5)

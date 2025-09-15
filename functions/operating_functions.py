@@ -232,7 +232,7 @@ class OperatingFunctions:
                             'smx_obj': smx
                         }
 
-                        if pol_str == "N-side":
+                        if pol_str == 'N-side':
                             asic_nside_hw_efuse_pairs.append((addr, asic_id_str))
                         else:
                             asic_pside_hw_efuse_pairs.append((addr, asic_id_str))
