@@ -332,7 +332,7 @@ class TabInterface(QWidget):
         select_button1.setStyleSheet(button_style)
         select_button1.clicked.connect(self.select_directory)
         
-        default_directory1 = os.path.expanduser("/home/cbm/cbmsoft/emu_test_module_arr/python/module_files/")
+        default_directory1 = os.path.expanduser("/home/cbm/cbmsoft/emu_test_module_arr/python/module_files")
         self.entry_directory.setText(default_directory1)
         
         label_calibration = QLabel("Calibration Dir:")
@@ -1974,7 +1974,7 @@ class TabInterface(QWidget):
                                     label=f'Measure {i+1}' if x == index[0] else "")
                     
                     # Horizontal line crossing the point
-                    self.ax_enc.hlines(y, x-0.3, x+0.3, colors=color, linewidth=2, alpha=0.7)
+                    self.ax_enc.hlines(1, x-0.3, x+0.3, colors=color, linewidth=2, alpha=0.7)
                     
                     # Vertical line of the error range
                     self.ax_enc.vlines(x, y-error, y+error, colors=color, linewidth=2, alpha=0.7)
@@ -2031,7 +2031,7 @@ class TabInterface(QWidget):
                                     label=f'Measure {i+1}' if x == index[0] else "")
                     
                     # Horizontal line crossing the point
-                    self.ax_thr.hlines(y, x-0.3, x+0.3, colors=color, linewidth=2, alpha=0.7)
+                    self.ax_thr.hlines(1, x-0.3, x+0.3, colors=color, linewidth=2, alpha=0.7)
                     
                     # Vertical line of the error range
                     self.ax_thr.vlines(x, y-error, y+error, colors=color, linewidth=2, alpha=0.7)
@@ -2088,7 +2088,7 @@ class TabInterface(QWidget):
                                         label=f'Measure {i+1}' if x == index[0] else "")
                     
                     # Horizontal line crossing the point
-                    self.ax_adc_gain.hlines(y, x-0.3, x+0.3, colors=color, linewidth=2, alpha=0.7)
+                    self.ax_adc_gain.hlines(1, x-0.3, x+0.3, colors=color, linewidth=2, alpha=0.7)
                     
                     # Vertical line of the error range
                     self.ax_adc_gain.vlines(x, y-error, y+error, colors=color, linewidth=2, alpha=0.7)

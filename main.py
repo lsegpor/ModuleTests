@@ -892,6 +892,23 @@ class Main:
                         self.df.write_log_file(self.vd.module_dir, module_sn, info)
                     except Exception as e:
                         log.error(f"Tab {tab_id}: Error in read_asic_id: {str(e)}")
+
+                    print(f"🔍 Initializing analysis for ladder: {self.vd.ladder_sn}, module: {self.vd.module_sn}")
+
+                    print(f"ASICs N-Side: {self.vd.asic_nside_hw_efuse_pairs}")
+                    print(f"ASICs P-Side: {self.vd.asic_pside_hw_efuse_pairs}")
+
+                    results = process_p_scan_files(self.vd.ladder_sn, self.vd.module_sn, self.vd.asic_nside_hw_efuse_pairs, self.vd.asic_pside_hw_efuse_pairs)
+
+                    print(f"Results: {results}")
+
+                    if results is not None:
+                        print(f"Successful processing for {self.vd.ladder_sn}/{self.vd.module_sn}")
+                        print(f"Processed {len(results)} files")
+
+                        update_pscan(results)
+                    else:
+                        print(f"Error processing {self.vd.ladder_sn}/{self.vd.module_sn}")
                     
                     accumulated_progress += step_percentage
                     update_progress(accumulated_progress)

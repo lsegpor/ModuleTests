@@ -102,7 +102,7 @@ class VariablesDefinition:
     # Possible test sequences.
 
     test_list_init = ["power_on_emu", "read_emu", "full_sync","#turn_hv_on", "read_lv_bc"]
-    test_list_comm = ["std_config","read_asic_id","set_trim_default", "read_lv_ac", "check_vddm_temp"]
+    test_list_comm = ["std_config","read_asic_id","#set_trim_default", "read_lv_ac", "check_vddm_temp"]
     test_list_calib = ["set_trim_default", "get_vrefs", "set_calib_par", "get_trim", "read_lv_ac", "check_vddm_temp"]
     test_list_check = ["set_trim_calib", "check_trim", "read_lv_ac", "check_vddm_temp", "#turn_hv_off"]
     test_list_c_check = ["#set_trim_calib", "read_lv_ac", "check_vddm_temp", "#turn_hv_off","conn_check"]
