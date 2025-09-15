@@ -1963,25 +1963,26 @@ class TabInterface(QWidget):
         self.ax_enc.set_xticklabels(['N0', 'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 
                                     'P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'])
 
-        # Draw data with crosses
-        for i, (index, values, error_ranges) in enumerate(self.enc_datasets):
+        # Draw data with connected points and error bars (only the last dataset)
+        if self.enc_datasets:
+            index, values, error_ranges = self.enc_datasets[-1]
             if index and values and error_ranges and len(index) == len(values) == len(error_ranges):
-                color = plt.cm.tab10(i % 10)  # Different colors for each dataset
+                color = plt.cm.tab10(0)  # Use consistent color
 
-                for x, y, error in zip(index, values, error_ranges):
+                # Sort data by index to ensure proper connection order
+                sorted_data = sorted(zip(index, values, error_ranges))
+                sorted_index, sorted_values, sorted_errors = zip(*sorted_data)
+
+                # Connect points with lines (sorted)
+                self.ax_enc.plot(sorted_index, sorted_values, color=color, linewidth=1.5, alpha=0.8)
+
+                for x, y, error in zip(sorted_index, sorted_values, sorted_errors):
                     # Central point
-                    self.ax_enc.scatter(x, y, color=color, s=50, alpha=0.8, 
-                                    label=f'Measure {i+1}' if x == index[0] else "")
-                    
-                    # Horizontal line crossing the point (always at value 1)
-                    self.ax_enc.hlines(1, x-0.3, x+0.3, colors=color, linewidth=2, alpha=0.7)
-                    
+                    self.ax_enc.scatter(x, y, color=color, s=50, alpha=0.8)
+
                     # Vertical line of the error range
                     self.ax_enc.vlines(x, y-error, y+error, colors=color, linewidth=2, alpha=0.7)
-        
-        if len(self.enc_datasets) > 1:
-            self.ax_enc.legend(fontsize=7, loc='best')
-        
+
         self.ax_enc.set_title('ENC', fontsize=9)
         self.ax_enc.grid(True, linestyle='--', alpha=0.5, linewidth=0.5)
         self.figure_enc.subplots_adjust(top=0.9)
@@ -2020,25 +2021,26 @@ class TabInterface(QWidget):
         self.ax_thr.set_xticklabels(['N0', 'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 
                                     'P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'])
 
-        # Draw data with crosses
-        for i, (index, values, error_ranges) in enumerate(self.thr_datasets):
+        # Draw data with connected points and error bars (only the last dataset)
+        if self.thr_datasets:
+            index, values, error_ranges = self.thr_datasets[-1]
             if index and values and error_ranges and len(index) == len(values) == len(error_ranges):
-                color = plt.cm.tab10(i % 10)  # Different colors for each dataset
+                color = plt.cm.tab10(0)  # Use consistent color
 
-                for x, y, error in zip(index, values, error_ranges):
+                # Sort data by index to ensure proper connection order
+                sorted_data = sorted(zip(index, values, error_ranges))
+                sorted_index, sorted_values, sorted_errors = zip(*sorted_data)
+
+                # Connect points with lines (sorted)
+                self.ax_thr.plot(sorted_index, sorted_values, color=color, linewidth=1.5, alpha=0.8)
+
+                for x, y, error in zip(sorted_index, sorted_values, sorted_errors):
                     # Central point
-                    self.ax_thr.scatter(x, y, color=color, s=50, alpha=0.8, 
-                                    label=f'Measure {i+1}' if x == index[0] else "")
-                    
-                    # Horizontal line crossing the point (always at value 1)
-                    self.ax_thr.hlines(1, x-0.3, x+0.3, colors=color, linewidth=2, alpha=0.7)
-                    
+                    self.ax_thr.scatter(x, y, color=color, s=50, alpha=0.8)
+
                     # Vertical line of the error range
                     self.ax_thr.vlines(x, y-error, y+error, colors=color, linewidth=2, alpha=0.7)
-        
-        if len(self.thr_datasets) > 1:
-            self.ax_thr.legend(fontsize=7, loc='best')
-        
+
         self.ax_thr.set_title('Thr', fontsize=9)
         self.ax_thr.grid(True, linestyle='--', alpha=0.5, linewidth=0.5)
         self.figure_thr.subplots_adjust(top=0.9)
@@ -2085,10 +2087,14 @@ class TabInterface(QWidget):
             if index and values and error_ranges and len(index) == len(values) == len(error_ranges):
                 color = plt.cm.tab10(0)  # Use consistent color
 
-                # Connect points with lines
-                self.ax_adc_gain.plot(index, values, color=color, linewidth=1.5, alpha=0.8)
+                # Sort data by index to ensure proper connection order
+                sorted_data = sorted(zip(index, values, error_ranges))
+                sorted_index, sorted_values, sorted_errors = zip(*sorted_data)
 
-                for x, y, error in zip(index, values, error_ranges):
+                # Connect points with lines (sorted)
+                self.ax_adc_gain.plot(sorted_index, sorted_values, color=color, linewidth=1.5, alpha=0.8)
+
+                for x, y, error in zip(sorted_index, sorted_values, sorted_errors):
                     # Central point
                     self.ax_adc_gain.scatter(x, y, color=color, s=50, alpha=0.8)
                     

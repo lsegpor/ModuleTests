@@ -208,11 +208,14 @@ class OperatingFunctions:
         else:
             feb_type_sw.extend(self.vd.feb_type_sw_B)
 
+        if not hasattr(self.vd, 'asic_nside_hw_efuse_pairs') or self.vd.asic_nside_hw_efuse_pairs is None:
+            self.vd.asic_nside_hw_efuse_pairs = []
+        if not hasattr(self.vd, 'asic_pside_hw_efuse_pairs') or self.vd.asic_pside_hw_efuse_pairs is None:
+            self.vd.asic_pside_hw_efuse_pairs = []
+
         asic_info_list = []
         efuse_str_registry = {}
         efuse_int_registry = {}
-        asic_nside_hw_efuse_pairs = []
-        asic_pside_hw_efuse_pairs = []
         
         for asic_sw in feb_type_sw:
             for smx in smx_l_side:
@@ -233,9 +236,9 @@ class OperatingFunctions:
                         }
 
                         if pol_str == 'N-side':
-                            asic_nside_hw_efuse_pairs.append((addr, asic_id_str))
+                            self.vd.asic_nside_hw_efuse_pairs.append((addr, asic_id_str))
                         else:
-                            asic_pside_hw_efuse_pairs.append((addr, asic_id_str))
+                            self.vd.asic_pside_hw_efuse_pairs.append((addr, asic_id_str))
 
                         asic_info_list.append(asic_info)
                         
@@ -261,9 +264,6 @@ class OperatingFunctions:
         validation_result = self.validate_efuse_uniqueness(
             efuse_str_registry, efuse_int_registry, pol_str, feb_type
         )
-
-        self.vd.asic_nside_hw_efuse_pairs = asic_nside_hw_efuse_pairs
-        self.vd.asic_pside_hw_efuse_pairs = asic_pside_hw_efuse_pairs
 
         return validation_result
     
