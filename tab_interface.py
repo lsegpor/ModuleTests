@@ -5,6 +5,7 @@ from PyQt5.QtCore import Qt, QThread, QSize
 from PyQt5.QtGui import QPixmap, QFont
 import sys
 import os
+import traceback
 sys.path.append('../autogen/agwb/python/')
 sys.path.append('../smx_tester/')
 from utils.test_worker import TestWorker
@@ -12,6 +13,8 @@ from smx_tester import *
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolBar
 from matplotlib.figure import Figure
+matplotlib.rcParams['text.usetex'] = False
+matplotlib.rcParams['mathtext.default'] = 'regular'
 import datetime
 from utils.console_window import ConsoleManager
 from utils.module_scanner import ModuleScanner
@@ -34,6 +37,7 @@ class TabInterface(QWidget):
         self.enc_datasets = []
         self.thr_datasets = []
         self.adc_gain_datasets = []
+        self.accumulated_plot_data = []
         
         if not hasattr(root, 'console_manager'):
             root.console_manager = ConsoleManager()
@@ -1171,7 +1175,6 @@ class TabInterface(QWidget):
             
         except Exception as e:
             print(f"Error procesing scanner data: {e}")
-            import traceback
             traceback.print_exc()
             
             from PyQt5.QtWidgets import QMessageBox
@@ -1252,7 +1255,6 @@ class TabInterface(QWidget):
                 QMessageBox.warning(self, "Error", "Principal logic not available.")
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Error turning on LV: {str(e)}")
-            import traceback
             traceback.print_exc()
         
     def save_figure(self):
@@ -1956,6 +1958,8 @@ class TabInterface(QWidget):
             max_value = max_value + margin
         
         self.ax_enc.set_ylim(min_value, max_value)
+
+        self.ax_enc.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{int(x)}'))
         
         self.ax_enc.xaxis.label.set_fontsize(8)
         self.ax_enc.yaxis.label.set_fontsize(8)
@@ -1964,8 +1968,8 @@ class TabInterface(QWidget):
         
         self.ax_enc.set_xlim(-0.5, 15.5)
         self.ax_enc.set_xticks(range(16))
-        self.ax_enc.set_xticklabels(['N0', 'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 
-                                    'P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'])
+        self.ax_enc.set_xticklabels(['N7', 'N6', 'N5', 'N4', 'N3', 'N2', 'N1', 'N0', 
+                                     'P1', 'P0', 'P3', 'P2', 'P5', 'P4', 'P7', 'P6'])
 
         # Draw data with connected points and error bars (only the last dataset)
         if self.enc_datasets:
@@ -1989,7 +1993,7 @@ class TabInterface(QWidget):
                     self.ax_enc.plot(n_index, n_values, color=n_color, linewidth=1.5, alpha=0.8, label='N-side')
                     
                     for x, y, error in zip(n_index, n_values, n_errors):
-                        self.ax_enc.scatter(x, y, color=n_color, s=50, alpha=0.8)
+                        self.ax_enc.scatter(x, y, color=n_color, s=50, alpha=0.8, facecolor='none', edgecolor=n_color, linewidths=2)
                         self.ax_enc.vlines(x, y-error, y+error, colors=n_color, linewidth=2, alpha=0.7)
 
                 # Draw P-side data if exists
@@ -1998,7 +2002,7 @@ class TabInterface(QWidget):
                     self.ax_enc.plot(p_index, p_values, color=p_color, linewidth=1.5, alpha=0.8, label='P-side')
 
                     for x, y, error in zip(p_index, p_values, p_errors):
-                        self.ax_enc.scatter(x, y, color=p_color, s=50, alpha=0.8)
+                        self.ax_enc.scatter(x, y, color=p_color, s=50, alpha=0.8, facecolor='none', edgecolor=p_color, linewidths=2)
                         self.ax_enc.vlines(x, y-error, y+error, colors=p_color, linewidth=2, alpha=0.7)
 
                 # Add legend if both sides have data
@@ -2036,6 +2040,8 @@ class TabInterface(QWidget):
             max_value = max_value + margin
         
         self.ax_thr.set_ylim(min_value, max_value)
+
+        self.ax_thr.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{int(x)}'))
         
         self.ax_thr.xaxis.label.set_fontsize(8)
         self.ax_thr.yaxis.label.set_fontsize(8)
@@ -2044,8 +2050,8 @@ class TabInterface(QWidget):
         
         self.ax_thr.set_xlim(-0.5, 15.5)
         self.ax_thr.set_xticks(range(16))
-        self.ax_thr.set_xticklabels(['N0', 'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 
-                                    'P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'])
+        self.ax_thr.set_xticklabels(['N7', 'N6', 'N5', 'N4', 'N3', 'N2', 'N1', 'N0', 
+                                     'P1', 'P0', 'P3', 'P2', 'P5', 'P4', 'P7', 'P6'])
 
         # Draw data with connected points and error bars (only the last dataset)
         if self.thr_datasets:
@@ -2069,7 +2075,7 @@ class TabInterface(QWidget):
                     self.ax_thr.plot(n_index, n_values, color=n_color, linewidth=1.5, alpha=0.8, label='N-side')
                     
                     for x, y, error in zip(n_index, n_values, n_errors):
-                        self.ax_thr.scatter(x, y, color=n_color, s=50, alpha=0.8)
+                        self.ax_thr.scatter(x, y, color=n_color, s=50, alpha=0.8, facecolor='none', edgecolor=n_color, linewidths=2)
                         self.ax_thr.vlines(x, y-error, y+error, colors=n_color, linewidth=2, alpha=0.7)
 
                 # Draw P-side data if exists
@@ -2078,7 +2084,7 @@ class TabInterface(QWidget):
                     self.ax_thr.plot(p_index, p_values, color=p_color, linewidth=1.5, alpha=0.8, label='P-side')
 
                     for x, y, error in zip(p_index, p_values, p_errors):
-                        self.ax_thr.scatter(x, y, color=p_color, s=50, alpha=0.8)
+                        self.ax_thr.scatter(x, y, color=p_color, s=50, alpha=0.8, facecolor='none', edgecolor=p_color, linewidths=2)
                         self.ax_thr.vlines(x, y-error, y+error, colors=p_color, linewidth=2, alpha=0.7)
 
                 # Add legend if both sides have data
@@ -2118,6 +2124,8 @@ class TabInterface(QWidget):
             max_value = max_value + margin
         
         self.ax_adc_gain.set_ylim(min_value, max_value)
+
+        self.ax_adc_gain.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{int(x)}'))
         
         self.ax_adc_gain.xaxis.label.set_fontsize(8)
         self.ax_adc_gain.yaxis.label.set_fontsize(8)
@@ -2126,8 +2134,8 @@ class TabInterface(QWidget):
         
         self.ax_adc_gain.set_xlim(-0.5, 15.5)
         self.ax_adc_gain.set_xticks(range(16))
-        self.ax_adc_gain.set_xticklabels(['N0', 'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 
-                                        'P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'])
+        self.ax_adc_gain.set_xticklabels(['N7', 'N6', 'N5', 'N4', 'N3', 'N2', 'N1', 'N0', 
+                                          'P1', 'P0', 'P3', 'P2', 'P5', 'P4', 'P7', 'P6'])
 
         # Draw data with connected points and error bars (only the last dataset)
         if self.adc_gain_datasets:
@@ -2151,7 +2159,7 @@ class TabInterface(QWidget):
                     self.ax_adc_gain.plot(n_index, n_values, color=n_color, linewidth=1.5, alpha=0.8, label='N-side')
                     
                     for x, y, error in zip(n_index, n_values, n_errors):
-                        self.ax_adc_gain.scatter(x, y, color=n_color, s=50, alpha=0.8)
+                        self.ax_adc_gain.scatter(x, y, color=n_color, s=50, alpha=0.8, facecolor='none', edgecolor=n_color, linewidths=2)
                         self.ax_adc_gain.vlines(x, y-error, y+error, colors=n_color, linewidth=2, alpha=0.7)
                 
                 # Draw P-side data if exists
@@ -2160,7 +2168,7 @@ class TabInterface(QWidget):
                     self.ax_adc_gain.plot(p_index, p_values, color=p_color, linewidth=1.5, alpha=0.8, label='P-side')
                     
                     for x, y, error in zip(p_index, p_values, p_errors):
-                        self.ax_adc_gain.scatter(x, y, color=p_color, s=50, alpha=0.8)
+                        self.ax_adc_gain.scatter(x, y, color=p_color, s=50, alpha=0.8, facecolor='none', edgecolor=p_color, linewidths=2)
                         self.ax_adc_gain.vlines(x, y-error, y+error, colors=p_color, linewidth=2, alpha=0.7)
                 
                 # Add legend if both sides have data
@@ -2173,15 +2181,8 @@ class TabInterface(QWidget):
         self.canvas_adc_gain.draw()
 
     def process_table_data(self, table_values):
-        """
-        Process the results table and extracts the organized data for the graphs
-
-        Parameters:
-        - table_values: list of lists with the table data
-
-        Returns:
-        - Dictionaries with index, values and errors for each type of graph
-        """
+        nside_hw_to_plot = {7: 0, 6: 1, 5: 2, 4: 3, 3: 4, 2: 5, 1: 6, 0: 7}
+        pside_hw_to_plot = {1: 8, 0: 9, 3: 10, 2: 11, 5: 12, 4: 13, 7: 14, 6: 15}
 
         # Initialize structures to store organized data
         enc_data = {'index': [], 'values': [], 'errors': []}
@@ -2190,38 +2191,46 @@ class TabInterface(QWidget):
 
         # Process each row of the table
         for row in table_values:
-            hw_addr = row[0]      # HW_Addr (0-7)
-            polarity = row[1]     # Polarity ('N' o 'P')
-            thr_mean = row[2]     # Thr (e)
-            thr_std = row[3]      # Thr_std (e)
-            gain_mean = row[4]    # Gain (e/LSB)
-            gain_std = row[5]     # Gain_std (e/LSB)
-            enc_mean = row[6]     # ENC (e)
-            enc_std = row[7]      # ENC_std (e)
+            try:
+                hw_addr = row[0]      # HW_Addr (0-7)
+                polarity = row[1]     # Polarity ('N' o 'P')
+                thr_mean = row[2]     # Thr (e)
+                thr_std = row[3]      # Thr_std (e)
+                gain_mean = row[4]    # Gain (e/LSB)
+                gain_std = row[5]     # Gain_std (e/LSB)
+                enc_mean = row[6]     # ENC (e)
+                enc_std = row[7]      # ENC_std (e)
 
-            # Calculate the index on the X axis (0-15)
-            if polarity == 'N':
-                x_index = hw_addr  # N0, N1, N2, ..., N7 → positions 0-7
-            elif polarity == 'P':
-                x_index = hw_addr + 8  # P0, P1, P2, ..., P7 → positions 8-15
-            else:
-                continue  # Skip if polarity is not valid
+                if polarity == 'N':
+                    x_index = nside_hw_to_plot.get(hw_addr)
+                elif polarity == 'P':
+                    x_index = pside_hw_to_plot.get(hw_addr)
+                else:
+                    continue
 
-            # Add data to structures
-            # ENC
-            enc_data['index'].append(x_index)
-            enc_data['values'].append(enc_mean)
-            enc_data['errors'].append(enc_std)
-            
-            # Threshold
-            thr_data['index'].append(x_index)
-            thr_data['values'].append(thr_mean)
-            thr_data['errors'].append(thr_std)
-            
-            # ADC Gain
-            adc_gain_data['index'].append(x_index)
-            adc_gain_data['values'].append(gain_mean)
-            adc_gain_data['errors'].append(gain_std)
+                if x_index is None:
+                    print(f"Warning: Unknown HW address {hw_addr} for polarity {polarity}")
+                    continue
+
+                # Add data to structures
+                # ENC
+                enc_data['index'].append(x_index)
+                enc_data['values'].append(enc_mean)
+                enc_data['errors'].append(enc_std)
+                
+                # Threshold
+                thr_data['index'].append(x_index)
+                thr_data['values'].append(thr_mean)
+                thr_data['errors'].append(thr_std)
+                
+                # ADC Gain
+                adc_gain_data['index'].append(x_index)
+                adc_gain_data['values'].append(gain_mean)
+                adc_gain_data['errors'].append(gain_std)
+
+            except Exception as e:
+                print(f"Error processing row: {e}")
+                continue
         
         return enc_data, thr_data, adc_gain_data
 
@@ -2252,11 +2261,24 @@ class TabInterface(QWidget):
         self.update_thr_plot()
         self.update_adc_gain_plot()
 
+    def update_pscan_plots_incremental(self, new_data):
+        if not hasattr(self, 'accumulated_plot_data'):
+            self.accumulated_plot_data = []
+        
+        self.accumulated_plot_data.extend(new_data)
+        
+        self.update_pscan_plots_from_table(self.accumulated_plot_data)
+
+        print(f"Plot updated with {len(self.accumulated_plot_data)} total ASICs")
+
     def clear_pscan_plots(self):
         """
         Clear all plot datasets when starting new tests.
         Call this function at the beginning of each test run.
         """
+        # Clear accumulated data
+        self.accumulated_plot_data = []
+
         # Clear all datasets
         self.enc_datasets = []
         self.thr_datasets = []
@@ -2419,7 +2441,7 @@ class TabInterface(QWidget):
         self.worker.logSignal.connect(self.handle_log_message)
         self.worker.emuSignal.connect(self.update_emu_values)
         self.worker.vddmSignal.connect(self.update_vddm_plot)
-        self.worker.pscanPlotSignal.connect(self.update_pscan_plots_from_table)
+        self.worker.pscanPlotSignal.connect(self.update_pscan_plots_incremental)
         self.worker.tempSignal.connect(self.update_temp_checkboxes)
         self.worker.clearSignal.connect(self.clear_checkbox_colors)
         self.worker.clearPscanSignal.connect(self.clear_pscan_plots)
@@ -2465,6 +2487,5 @@ class TabInterface(QWidget):
             self.main.write_observations(observations)
             QMessageBox.information(self, "Result", "Observations saved.")
         except Exception as e:
-            import traceback
             traceback.print_exc()
             QMessageBox.critical(self, "Error", f"Failed to save observations: {str(e)}")

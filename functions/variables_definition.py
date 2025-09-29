@@ -25,6 +25,7 @@ class VariablesDefinition:
         self.log = logging.getLogger()
         self.asic_nside_hw_efuse_pairs = []
         self.asic_pside_hw_efuse_pairs = []
+        self.accumulated_table = []
 
     #["EMU_213"]     # List of EMU boards used during the test
     #emu_list = ["EMU_236"]

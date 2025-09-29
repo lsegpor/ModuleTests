@@ -10,7 +10,6 @@ from functions.variables_definition import VariablesDefinition
 from functions.directory_files import DirectoryFiles
 import utils.emu_lock as emu_lock
 import threading
-from utils.pscan_plot import process_p_scan_files
 
 class Main:
 
@@ -28,6 +27,8 @@ class Main:
         self.local_cal_asic_list_pside = []
         self.cal_set_nside = None
         self.cal_set_pside = None
+
+        self.pscan_plot_callback = None
         
         self._smx_lock = threading.Lock()
         self._execute_lock = threading.Lock()
@@ -55,6 +56,9 @@ class Main:
             "set_mbias": 2,
             "long_run": 40
         }
+
+    def set_pscan_plot_callback(self, callback):
+        self.pscan_plot_callback = callback
         
     def get_valid_selections(self, tab_id):
         with self._smx_lock:
@@ -251,7 +255,8 @@ class Main:
                     self.vd.vp_step, self.vd.npulses, 
                     check_continue=check_continue,
                     progress_callback=asic_progress_callback,
-                    base_progress=accumulated_progress
+                    base_progress=accumulated_progress,
+                    test_mode=True
                 )
                 current_asic += len([smx for smx in selected_smx_l_nside if smx.address in valid_nside_indexes])
                 
@@ -269,7 +274,8 @@ class Main:
                     self.vd.vp_step, self.vd.npulses, 
                     check_continue=check_continue,
                     progress_callback=asic_progress_callback,
-                    base_progress=accumulated_progress
+                    base_progress=accumulated_progress,
+                    test_mode=True
                 )
                 
                 if result_pside == -1:
@@ -366,7 +372,7 @@ class Main:
     def execute_tests(self, module, sn_nside, sn_pside, slc_nside, slc_pside, emu, tests_values, s_size,
                       s_qgrade, asic_nside_values, asic_pside_values, suid, lv_nside_12_checked,
                       lv_pside_12_checked, lv_nside_18_checked, lv_pside_18_checked, module_files, calib_path,
-                      update_progress, update_test_label, update_emu_values, update_vddm, update_pscan,
+                      update_progress, update_test_label, update_emu_values, update_vddm,
                       update_temp, clear_temp, clear_pscan, efuse_warning, uplinks_warning, update_feb_nside,
                       update_feb_pside, update_calib_path, update_save_path, tab_id, check_continue=None,
                       worker_instance=None):
@@ -896,7 +902,7 @@ class Main:
                         self.df.write_log_file(self.vd.module_dir, module_sn, info)
                     except Exception as e:
                         log.error(f"Tab {tab_id}: Error in read_asic_id: {str(e)}")
-                    
+
                     accumulated_progress += step_percentage
                     update_progress(accumulated_progress)
                     
@@ -1058,6 +1064,9 @@ class Main:
                         return
                 
                 elif (test_step =="check_trim"):
+                    if hasattr(self, 'pscan_plot_callback') and self.pscan_plot_callback:
+                        self.of.set_pscan_plot_callback(self.pscan_plot_callback)
+
                     self.run_check_trim_test(
                         accumulated_progress, 
                         step_percentage, 
@@ -1068,18 +1077,20 @@ class Main:
                         pscan_dir
                     )
 
-                    print(f"🔍 Initializing analysis for ladder: {self.vd.ladder_sn}, module: {self.vd.module_sn}")
+                    #print(f"🔍 Initializing analysis for ladder: {self.vd.ladder_sn}, module: {self.vd.module_sn}")
 
-                    results = process_p_scan_files(self.vd.ladder_sn, self.vd.module_sn, self.vd.asic_nside_hw_efuse_pairs, self.vd.asic_pside_hw_efuse_pairs)
+                    #results = process_p_scan_files(self.vd.ladder_sn, self.vd.module_sn, self.vd.asic_nside_hw_efuse_pairs, self.vd.asic_pside_hw_efuse_pairs)
 
-                    if results is not None:
-                        print(f"Successful processing for {self.vd.ladder_sn}/{self.vd.module_sn}")
-                        print(f"Processed {len(results)} files")
+                    #if results is not None:
+                        #print(f"Successful processing for {self.vd.ladder_sn}/{self.vd.module_sn}")
+                        #print(f"Processed {len(results)} files")
 
-                        update_pscan(results)
-                    else:
-                        print(f"Error processing {self.vd.ladder_sn}/{self.vd.module_sn}")
+                        #update_pscan(results)
+                    #else:
+                        #print(f"Error processing {self.vd.ladder_sn}/{self.vd.module_sn}")
                     
+                    #print(f"✅ Completed pscan processing")
+
                     accumulated_progress += step_percentage
                     update_progress(accumulated_progress)
                     

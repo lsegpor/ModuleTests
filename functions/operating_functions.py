@@ -11,14 +11,21 @@ import traceback
 from PyQt5.QtCore import QCoreApplication
 import threading
 import ctypes
+import numpy as np
+from utils.pscan_plot import process_single_p_scan_file
+from tabulate import tabulate
 
 class OperatingFunctions: 
     
     def __init__(self, vd):
         self.vd = vd
         self.df=DirectoryFiles(self.vd)
+        self.pscan_plot_callback = None
 
     log = logging.getLogger()
+
+    def set_pscan_plot_callback(self, callback):
+        self.pscan_plot_callback = callback
 
     def run_with_timeout_and_interrupt(self, method, args=(), kwargs={}, timeout=None, check_continue=None):
         finished = [False]
@@ -906,7 +913,7 @@ class OperatingFunctions:
                     
         return 0
 
-    def check_trim(self, smx_l_side, pscan_dir, pol, feb_type, cal_asic_list, disc_list=[5,10,16,24,30,31], vp_min=0, vp_max=255, vp_step=1, npulses=100, check_continue=None, progress_callback=None, base_progress=0):
+    def check_trim(self, smx_l_side, pscan_dir, pol, feb_type, cal_asic_list, disc_list, vp_min, vp_max, vp_step, npulses, check_continue=None, progress_callback=None, base_progress=0, test_mode=False):
         info = ""
         feb_type_sw = []
         self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
@@ -916,6 +923,7 @@ class OperatingFunctions:
             pol_str = 'elect'
             pol_calib = 0
             info = 'PSCAN_FILE_N'
+            self.vd.accumulated_table = []  # Reset accumulated table at start of N-side check_trim
         elif (pol == 'P' or pol == '1'):
             pol_str = 'holes'
             pol_calib = 1
@@ -936,12 +944,18 @@ class OperatingFunctions:
             feb_type_sw.extend(self.vd.feb_type_sw_B)
 
         total_iterations = 0
+        
         for asic_sw in feb_type_sw:
             for smx in smx_l_side:
                 if ((smx.address == asic_sw) and (smx.address in cal_asic_list)):
                     total_iterations += 1
         
         current_iteration = 0
+
+        if not hasattr(self.vd, 'accumulated_table') or self.vd.accumulated_table is None:
+            self.vd.accumulated_table = []
+
+        table_labels = ['HW_Addr', 'Polarity', 'Thr (e)', 'Thr_std (e)', 'Gain (e/LSB)', 'Gain_std (e/LSB)', 'ENC (e)', 'ENC_std (e)', 'Q_score', 'Odd_failed', 'Even_failed']
         
         log.info(f"Starting check_trim for {total_iterations} ASICs on {pol_str} side")
 
@@ -972,43 +986,43 @@ class OperatingFunctions:
                             return -1
                         
                         pscan_filename = None
-                        if hasattr(self, 'run_with_timeout_and_interrupt'):
-                            log.info(f"Running check_trim_red with timeout and interrupt for ASIC {asic_hw_addr}")
-                            log.info(f"  Parameters: disc_list={disc_list}, vp_range=[{vp_min}:{vp_max}:{vp_step}], npulses={npulses}")
-                            
-                            pscan_filename = self.run_with_timeout_and_interrupt(
-                                smx.check_trim_red,
-                                args=(
-                                    pscan_dir, pol_calib, asic_id_str, 
-                                    disc_list, vp_min, vp_max, vp_step, npulses
-                                ),
-                                check_continue=check_continue,
-                                timeout=None
-                            )
-                            
-                            if pscan_filename is None:
-                                if check_continue and not check_continue():
-                                    log.info(f"check_trim_red was interrupted for ASIC {asic_hw_addr}")
-                                    return -1
-                                else:
-                                    log.error(f"check_trim_red failed for ASIC {asic_hw_addr}")
-                                    current_iteration += 1
-                                    if progress_callback:
-                                        progress_callback(base_progress, current_iteration, total_iterations)
-                                    continue
-                        else:
-                            log.warning("run_with_timeout_and_interrupt not available, using original method (cannot be interrupted)")
-                            try:
-                                pscan_filename = smx.check_trim_red(
-                                    pscan_dir, pol_calib, asic_id_str, 
-                                    disc_list, vp_min, vp_max, vp_step, npulses
+
+                        if not test_mode:
+                            if hasattr(self, 'run_with_timeout_and_interrupt'):
+                                log.info(f"Running check_trim_red with timeout and interrupt for ASIC {asic_hw_addr}")
+                                
+                                pscan_filename = self.run_with_timeout_and_interrupt(
+                                    smx.check_trim_red,
+                                    args=(
+                                        pscan_dir, pol_calib, asic_id_str, 
+                                        disc_list, vp_min, vp_max, vp_step, npulses
+                                    ),
+                                    check_continue=check_continue,
+                                    timeout=None
                                 )
-                            except Exception as e:
-                                log.error(f"Error in check_trim_red for ASIC {asic_hw_addr}: {str(e)}")
-                                current_iteration += 1
-                                if progress_callback:
-                                    progress_callback(base_progress, current_iteration, total_iterations)
-                                continue
+                                
+                                if pscan_filename is None:
+                                    if check_continue and not check_continue():
+                                        log.info(f"check_trim_red was interrupted for ASIC {asic_hw_addr}")
+                                        return -1
+                                    else:
+                                        log.error(f"check_trim_red failed for ASIC {asic_hw_addr}")
+                                        current_iteration += 1
+                                        continue
+                            else:
+                                try:
+                                    pscan_filename = smx.check_trim_red(
+                                        pscan_dir, pol_calib, asic_id_str, 
+                                        disc_list, vp_min, vp_max, vp_step, npulses
+                                    )
+                                except Exception as e:
+                                    log.error(f"Error in check_trim_red for ASIC {asic_hw_addr}: {str(e)}")
+                                    current_iteration += 1
+                                    continue
+
+                        else:        
+                            log.info(f"🧪 TEST MODE: Skipping check_trim_red for ASIC {asic_hw_addr}")
+                            pscan_filename = "skipped"
                         
                         if check_continue and not check_continue():
                             log.info(f"check_trim aborted after check_trim_red for ASIC {asic_hw_addr}")
@@ -1018,11 +1032,37 @@ class OperatingFunctions:
                             info = "PSCAN_ASIC_HW_ADDR_{}: {}".format(asic_hw_addr, pscan_filename)
                             self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
                             self.df.write_log_file(self.vd.module_dir, self.vd.module_sn, info)
+
+                            log.info(f"Processing pscan file immediately for ASIC {asic_hw_addr}")
+
+                            pol_for_table = 'N' if pol_str == 'elect' else 'P'
+                        
+                            result_row = process_single_p_scan_file(
+                                self.vd.ladder_sn,
+                                self.vd.module_sn,
+                                asic_id_str,
+                                asic_hw_addr,
+                                pol_for_table,
+                                pscan_dir
+                            )
+                            
+                            if result_row:
+                                self.vd.accumulated_table.append(result_row)
+                                log.info(f"Added result for ASIC {asic_hw_addr} to accumulated table (total: {len(self.vd.accumulated_table)} entries)")
+
+                                if self.pscan_plot_callback:
+                                    self.pscan_plot_callback([result_row])
+                                    log.info(f"Sent real-time plot update for ASIC {asic_hw_addr}")
+                                
+                                log.info(f"Current accumulated results:\n{tabulate(self.vd.accumulated_table, headers=table_labels, tablefmt='simple', floatfmt='.0f')}")
+
+                            else:
+                                log.warning(f"Failed to process pscan file for ASIC {asic_hw_addr}")
+
                             log.info(f"Successfully completed check_trim for ASIC {asic_hw_addr}")
                         
                     except Exception as e:
                         log.error(f"Unexpected error processing ASIC {asic_hw_addr}: {str(e)}")
-                        pass
                     
                     current_iteration += 1
                     
@@ -1038,7 +1078,7 @@ class OperatingFunctions:
                     #self.df.write_log_file(self.vd.module_dir, self.vd.module_sn, info)
                     
         log.info(f"check_trim completed for {pol_str} side: {current_iteration}/{total_iterations} ASICs processed")
-        return 0
+        log.info(f"Final accumulated table ({len(self.vd.accumulated_table)} entries):\n{tabulate(self.vd.accumulated_table, headers=table_labels, tablefmt='simple', floatfmt='.0f')}")
 
     def connection_check(self, smx_l_side, conn_check_dir, pol, feb_type, cal_asic_list, nloops = 5, vref_t = 108, check_continue=None):
         # Function to check the connectivy of each channel by counting noise hits at a lower threshold

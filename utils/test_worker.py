@@ -5,6 +5,9 @@ import time
 import sys
 import traceback
 from utils.console_widget import UniversalOutputCapture
+from functions.operating_functions import OperatingFunctions
+from functions.variables_definition import VariablesDefinition
+from functions.directory_files import DirectoryFiles
 
 class TestWorker(QObject):
     progressSignal = pyqtSignal(int)
@@ -186,11 +189,11 @@ class TestWorker(QObject):
                         return
                     self.vddmSignal.emit(n_idx, n_val, p_idx, p_val, n_mval, p_mval)
 
-                def update_pscan(pscan_values):
+                def update_pscan_realtime(single_asic_data):
                     if self.stop_requested:
                         return
-                    self.pscanPlotSignal.emit(pscan_values)
-                    
+                    self.pscanPlotSignal.emit(single_asic_data)
+
                 def update_temp(n_idx, n_val, p_idx, p_val, n_mval, p_mval):
                     if self.stop_requested:
                         return
@@ -237,13 +240,15 @@ class TestWorker(QObject):
                         return
                     self.savepathSignal.emit(text)
                     self.log_message(f"Save path updated: {text}", "INFO")
+
+                self.main.set_pscan_plot_callback(update_pscan_realtime)
                 
                 self.main.execute_tests(
                     module, sn_nside, sn_pside, slc_nside, slc_pside, emu, 
                     test_values, s_size, s_qgrade, asic_nside_values, asic_pside_values, suid,
                     lv_nside_12_checked, lv_pside_12_checked, lv_nside_18_checked, lv_pside_18_checked,
                     module_files, calib_path, update_progress, update_test_label, update_emu_values,
-                    update_vddm, update_pscan, update_temp, clear_temp, clear_pscan, efuse_warning, uplinks_warning,
+                    update_vddm, update_temp, clear_temp, clear_pscan, efuse_warning, uplinks_warning,
                     update_feb_nside, update_feb_pside, update_calib_path, update_save_path, self.tab_num,
                     check_continue, self
                 )

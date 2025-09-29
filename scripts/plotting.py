@@ -53,7 +53,7 @@ def plot_linear_fit(chn, r):
         fontsize=8, color="gray"
     )
 
-    plt.savefig(f"images/chn_{chn}_thr_vs_adc.png", dpi=300)
+    #plt.savefig(f"images/chn_{chn}_thr_vs_adc.png", dpi=300)
     plt.close()
 
 from scripts.fit_err_fnc import err_func
@@ -104,6 +104,6 @@ def plot_s_curve(chn, adc_list, result, data_frame):
         ha="left", va="bottom",
         fontsize=8, color="gray"
     )
-    plt.savefig(f"images/chn_{chn}_s_curve_fit.png")
+    #plt.savefig(f"images/chn_{chn}_s_curve_fit.png")
     plt.close()
 

@@ -80,4 +80,4 @@ if __name__ == "__main__":
     plt.scatter(x, y, label='Data')
     plt.plot(x, y_fit, color='red', label='Fitted S-curve')
     plt.legend()
-    plt.savefig("./s_curve_fit_test.png")
+    #plt.savefig("./s_curve_fit_test.png")

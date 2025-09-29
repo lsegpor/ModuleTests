@@ -141,178 +141,144 @@ def process_channel(df, adc_list, chn):
 
     return results
 
-def process_p_scan_files(ladder_sn, module_sn, asic_nside_hw_efuse_pairs, asic_pside_hw_efuse_pairs, files_idx=None, q_lim=68):
-    # Relative route from utils/ to pscan_files/
-    source_dir = f"/home/cbm/cbmsoft/emu_test_module_arr/python/module_files/{ladder_sn}/{module_sn}/pscan_files"
-    
-    # Verify the directory exists
-    if not os.path.exists(source_dir):
-        logger.error(f"Directory {source_dir} does not exist")
-        return
-
-    files = os.listdir(source_dir)
-    #logger.debug(f"📁 DEBUG: {len(files)} files found in total")
-
-    txt_files = [f for f in files if f.endswith('.txt')]
-    #logger.debug(f"📝 DEBUG: {len(txt_files)} .txt files found")
-
-    if not txt_files:
-        logger.warning(f"⚠️ WARNING: No .txt files found in {source_dir}")
+def process_single_p_scan_file(ladder_sn, module_sn, asic_id_str, hw_addr, polarity, pscan_dir, q_lim=68):
+    # Looks for the pscan file corresponding to the given asic_id_str
+    if not os.path.exists(pscan_dir):
+        logger.error(f"Directory {pscan_dir} does not exist")
         return None
     
-    # efuse_id -> (hw_addr, polarity)
-    efuse_to_hw_pol = {}
+    files = os.listdir(pscan_dir)
+    txt_files = [f for f in files if f.endswith('.txt')]
+
+    # Looks for the pscan file corresponding to the given asic_id_str
+    target_file = None
+    for f_name in txt_files:
+        if asic_id_str in f_name:
+            target_file = f_name
+            break
     
-    # Process N-side pairs
-    if asic_nside_hw_efuse_pairs:
-        if isinstance(asic_nside_hw_efuse_pairs[0], tuple):
-            # Tuple list (hw_addr, efuse_str)
-            for hw_addr, efuse_str in asic_nside_hw_efuse_pairs:
-                efuse_to_hw_pol[efuse_str] = (hw_addr, 'N')
-        elif isinstance(asic_nside_hw_efuse_pairs[0], dict):
-            # Dictionaries list
-            for pair in asic_nside_hw_efuse_pairs:
-                efuse_to_hw_pol[pair['efuse_str']] = (pair['hw_addr'], 'N')
+    if not target_file:
+        logger.warning(f"No file found for ASIC ID '{asic_id_str}' in {pscan_dir}")
+        return None
     
-    # Process P-side pairs
-    if asic_pside_hw_efuse_pairs:
-        if isinstance(asic_pside_hw_efuse_pairs[0], tuple):
-            # Tuple list (hw_addr, efuse_str)
-            for hw_addr, efuse_str in asic_pside_hw_efuse_pairs:
-                efuse_to_hw_pol[efuse_str] = (hw_addr, 'P')
-        elif isinstance(asic_pside_hw_efuse_pairs[0], dict):
-            # Dictionaries list
-            for pair in asic_pside_hw_efuse_pairs:
-                efuse_to_hw_pol[pair['efuse_str']] = (pair['hw_addr'], 'P')
-    
-    table_values = []
+    logger.info(f"Processing file: {target_file} for ASIC {hw_addr} ({polarity})")
 
-    if files_idx is not None:
-        files = [files[idx] for idx in files_idx]
-    else:
-        files = txt_files
+    # Extract number of pulses from filename
+    try:
+        match = re.search(r"_NP_(\d+)_", target_file)
+        if not match:
+            raise ValueError(f"No pulse count found in filename: {target_file}")
+        n_of_pulses = int(match.group(1))
+        logger.info(f"Number of Pulses: {n_of_pulses}")
+    except Exception as e:
+        logger.warning(f"Failed to extract number of pulses from {target_file}: {e}")
+        n_of_pulses = 1
 
-    for f_name in files:
-        # Extract EFUSE ID from the filename
-        # Pattern: search between _ and _HW_
-        efuse_match = re.search(r"_([^_]+)_HW_", f_name)
-        if not efuse_match:
-            logger.warning(f"Couldn't extract EFUSE ID from file: {f_name}")
-            continue
-            
-        efuse_id = efuse_match.group(1)
+    file_path = f"{pscan_dir}/{target_file}"
 
-        # Search for the HW address and corresponding polarity
-        if efuse_id not in efuse_to_hw_pol:
-            logger.warning(f"EFUSE ID '{efuse_id}' not found in pair lists for file: {f_name}")
-            continue
-            
-        hw_addr, polarity = efuse_to_hw_pol[efuse_id]
-        logger.info(f"File: {f_name}")
-        logger.info(f"EFUSE ID: {efuse_id} -> HW Address: {hw_addr}, Polarity: {polarity}")
-
-        """ Search the number of injected pulses in the filename
-            If not found, assume 1 pulse, so the normalization will not change the data
-        """
-        try:
-            match = re.search(r"_NP_(\d+)_", f_name)
+    # Extract ADC list from the first line
+    try:
+        with open(file_path, "r") as f:
+            first_line = f.readline().strip()
+            match = re.search(r"DISC_LIST:\s*\[(.*?)\]", first_line)
             if not match:
-                raise ValueError(f"No pulse count found in filename: {f_name}")
-            n_of_pulses = int(match.group(1))
-            logger.info(f"File: {f_name}\nNumber of Pulses: {n_of_pulses}\n")
-        except Exception as e:
-            logger.warning(f"Failed to extract number of pulses from {f_name}: {e}")
-            n_of_pulses = 1
+                raise ValueError(f"No DISC_LIST found in {file_path}")
+            adc_list = [int(a) for a in match.group(1).split(",")]
+    except Exception as e:
+        logger.error(f"Error reading ADC list from {target_file}: {e}")
+        return None
 
-        file_path = f"{source_dir}/{f_name}"
+    # Load the file
+    column_names = ["VP_label", "VP_value", "CH_label", "CH_value"] + [f"ADC_{a}" for a in adc_list]
+    try:
+        df = pd.read_csv(
+            file_path,
+            sep='\\s+',
+            header=None,
+            skiprows=1,
+            names=column_names
+        )
+    except pd.errors.ParserError as e:
+        logger.error(f"Error parsing file {file_path}: {e}")
+        return None
 
-        """ Search for ADC list in the first line of the file """
-        try:
-            with open(file_path, "r") as f:
-                first_line = f.readline().strip()
-                #match = re.search(r"\[(.*?)\]", first_line)
-                match = re.search(r"DISC_LIST:\s*\[(.*?)\]", first_line)
-                if not match:
-                    raise ValueError(f"No DISC_LIST found in {file_path}")
-                adc_list = [int(a) for a in match.group(1).split(",")]
-        except Exception as e:
-            logger.error(f"{e}")
-            continue  # Skip this file if extraction fails
+    # Process the dataframe
+    df = df.drop('VP_label', axis=1)
+    df = df.drop('CH_label', axis=1)
+    df["CH_value"] = df["CH_value"].str.rstrip(":").astype(np.int8)
 
-        # Load the file, skipping the first line
-        column_names = ["VP_label", "VP_value", "CH_label", "CH_value"] + [f"ADC_{a}" for a in adc_list]
-        try:
-            df = pd.read_csv(
-                file_path,
-                sep='\\s+',
-                header=None,
-                skiprows=1,
-                names=column_names
-            )
-        except pd.errors.ParserError as e:
-            logger.error(f"Error parsing file {file_path}: {e}")
-            continue
+    for adc in adc_list:
+        df[f"ADC_{adc}"] = df[f"ADC_{adc}"].astype(np.int16)
 
-        df = df.drop('VP_label', axis=1)
-        df = df.drop('CH_label', axis=1)
+    adc_fields = [f for f in df.columns if f.startswith("ADC")]
 
-        df["CH_value"] = df["CH_value"].str.rstrip(":").astype(np.int8)
+    # Normalize by number of pulses
+    df[adc_fields] = df[adc_fields] / n_of_pulses
+    df.loc[:, adc_fields] = df.loc[:, adc_fields].mask(df.loc[:, adc_fields] > 1.1, 1)
 
-        for adc in adc_list:
-            df[f"ADC_{adc}"] = df[f"ADC_{adc}"].astype(np.int16)
+    # Process channels
+    args = [(df, adc_list[:-1], chn) for chn in range(128)]
+    with Pool() as p:
+        results = p.starmap(process_channel, args)
 
+    # Filter valid results
+    valid_results = [r for r in results if r is not None]
+    
+    if not valid_results:
+        logger.error(f"No valid results for file {target_file}")
+        return None
 
-        adc_fields = [f for f in df.columns if f.startswith("ADC")]
+    # Calculate metrics
+    linear_fits_data = [r['linear_fit'] for r in valid_results if 'linear_fit' in r]
+    
+    if not linear_fits_data:
+        logger.error(f"No valid linear fits found for file {target_file}")
+        return None
+        
+    linear_fits = np.array(linear_fits_data)
+    thre = (linear_fits[:,0] + linear_fits[:,2] * adc_list[-2]) * 350
+    gain = linear_fits[:,2] * -350
+    
+    q_scores = np.array([r['q_score'] for r in valid_results])
+    
+    enc_data = [r['enc'][0] for r in valid_results if 'enc' in r]
+    if not enc_data:
+        logger.warning(f"No ENC data found for file {target_file}")
+        enc = np.array([0])
+    else:
+        enc = np.array(enc_data) * 350
 
-        """ Normalize by number of injected pulses avoid oveflow
-            Additionally, ensure nromalization for the s-curve fit
-            effectively decreasing the numer of fit parameters """
-        df[adc_fields] = df[adc_fields] / n_of_pulses
+    # Calculate Q score
+    q_str = f"{np.sum(q_scores)/128:.4f}"
+    if np.sum(q_scores) > q_lim:
+        q_str = f"{q_str} *** warning ***"
 
-        """ Remove double pulse injection by seting large values to 1
-            Amplitude of measured signal cannot be largert than the number of injected pulses
-        """
-        df.loc[:, adc_fields] = df.loc[:, adc_fields].mask(df.loc[:, adc_fields] > 1.1, 1)
+    # Calculate odd/even failed
+    channel_q_map = {}
+    for i, result in enumerate(results):
+        if result is not None:
+            channel_q_map[i] = result['q_score']
+        else:
+            channel_q_map[i] = 1
+    
+    odd_failed = sum(channel_q_map[i] for i in range(1, 128, 2))
+    even_failed = sum(channel_q_map[i] for i in range(0, 128, 2))
 
-        args = [(df, adc_list[:-1], chn) for chn in range(128)]
-        with Pool() as p:
-            results = p.starmap(process_channel, args)
+    # Generate histograms
+    try:
+        fig, axs = plt.subplots(1, 2, figsize=(9, 4))
+        plot_histogram(thre, 'Thr', "Entries", axs[0])
+        plot_histogram(gain, 'gain', "Entries", axs[1])
+        plt.tight_layout()
+        plt.savefig(f"images/{target_file}_thr_gain.png", dpi=300)
+        plt.close()
+        logger.info(f"Histogram saved for {target_file}")
+    except Exception as e:
+        logger.warning(f"Could not save histogram for {target_file}: {e}")
 
-        linear_fits = np.array([r['linear_fit'] for r in results if 'linear_fit' in r])
-
-        thre = (linear_fits[:,0] + linear_fits[:,2] * adc_list[-2]) * 350
-        gain = linear_fits[:,2] * -350
-        q_scores = np.array([r['q_score'] for r in results if 'q_score' in r])
-
-        enc = np.array([r['enc'] for r in results if 'enc' in r]) *350
-
-        q_str = f"{np.sum(q_scores)/128:.4f}"
-        if np.sum(q_scores) > q_lim:
-            q_str = f"{q_str} *** warning ***"
-        table_values.append([hw_addr, polarity] + [x for v in (thre, gain, enc) for x in (np.mean(v), np.std(v))] + [q_str, int(np.sum(q_scores[1::2])), int(np.sum(q_scores[::2]))])
-
-        # if generate_file_summary:
-        #     labels = ['Empty Channel']
-        #     values = [np.sum(1 for r in results if r is None)]
-
-        #     with open(f"summary/{f_name}_summary.txt", "w") as summary_file:
-        #         for label, value in zip(labels, [f_name] + list(thre) + list(gain) + list(enc) + [q_str]):
-        #             summary_file.write(tabulate(values, headers=labels, tablefmt='simple', floatfmt=".3f"))
-
-
-        if True:
-            # for chn, r in enumerate(results):
-            #     plot_s_curve(chn, adc_list[:-1], r, df)
-            #     plot_linear_fit(chn, r)
-
-            fig, axs = plt.subplots(1, 2, figsize=(9, 4))
-            h_thre = plot_histogram(thre, 'Thr', "Entries", axs[0])
-            h_gain = plot_histogram(gain, 'gain', "Entries", axs[1])
-            plt.tight_layout()
-            plt.savefig(f"images/{f_name}_thr_gain.png", dpi=300)
-            plt.close()
-
-    table_labels = ['HW_Addr', 'Polarity', 'Thr (e)', 'Thr_std (e)', 'Gain (e/LSB)', 'Gain_std (e/LSB)', 'ENC (e)', 'ENC_std (e)', 'Q_score', 'Odd_failed', 'Even_failed']
-    logger.info(f"Summary:\n{tabulate(table_values, headers=table_labels, tablefmt='simple', floatfmt='.0f')}")
-
-    return table_values
+    # Return data row
+    result_row = [hw_addr, polarity] + [x for v in (thre, gain, enc) for x in (np.mean(v), np.std(v))] + [q_str, int(odd_failed), int(even_failed)]
+    
+    logger.info(f"Successfully processed {target_file}: HW_Addr={hw_addr}, Polarity={polarity}")
+    
+    return result_row
