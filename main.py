@@ -255,8 +255,7 @@ class Main:
                     self.vd.vp_step, self.vd.npulses, 
                     check_continue=check_continue,
                     progress_callback=asic_progress_callback,
-                    base_progress=accumulated_progress,
-                    test_mode=True
+                    base_progress=accumulated_progress
                 )
                 current_asic += len([smx for smx in selected_smx_l_nside if smx.address in valid_nside_indexes])
                 
@@ -274,8 +273,7 @@ class Main:
                     self.vd.vp_step, self.vd.npulses, 
                     check_continue=check_continue,
                     progress_callback=asic_progress_callback,
-                    base_progress=accumulated_progress,
-                    test_mode=True
+                    base_progress=accumulated_progress
                 )
                 
                 if result_pside == -1:
