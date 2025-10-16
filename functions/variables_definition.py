@@ -95,7 +95,7 @@ class VariablesDefinition:
     vp_max = 255
     vp_step = 1
     # Connection check Parameters
-    vref_t_low = 102                # Low ADC threshold to count noise hits in the discriminators 
+    vref_t_low = 90                # Low ADC threshold to count noise hits in the discriminators 
     nloops = 5                      # Number of loops to count noise hits in discriminators
             
     #Lists of subsequences for module tests

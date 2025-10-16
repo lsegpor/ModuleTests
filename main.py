@@ -1077,20 +1077,6 @@ class Main:
                         pscan_dir
                     )
 
-                    #print(f"🔍 Initializing analysis for ladder: {self.vd.ladder_sn}, module: {self.vd.module_sn}")
-
-                    #results = process_p_scan_files(self.vd.ladder_sn, self.vd.module_sn, self.vd.asic_nside_hw_efuse_pairs, self.vd.asic_pside_hw_efuse_pairs)
-
-                    #if results is not None:
-                        #print(f"Successful processing for {self.vd.ladder_sn}/{self.vd.module_sn}")
-                        #print(f"Processed {len(results)} files")
-
-                        #update_pscan(results)
-                    #else:
-                        #print(f"Error processing {self.vd.ladder_sn}/{self.vd.module_sn}")
-                    
-                    #print(f"✅ Completed pscan processing")
-
                     accumulated_progress += step_percentage
                     update_progress(accumulated_progress)
                     

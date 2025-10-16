@@ -913,27 +913,22 @@ class OperatingFunctions:
                     
         return 0
 
+    
     def check_trim(self, smx_l_side, pscan_dir, pol, feb_type, cal_asic_list, disc_list, vp_min, vp_max, vp_step, npulses, check_continue=None, progress_callback=None, base_progress=0, test_mode=False):
-        info = ""
         feb_type_sw = []
-        self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
         pol_calib = 0
         
         if (pol == 'N' or pol == '0'):
             pol_str = 'elect'
             pol_calib = 0
-            info = 'PSCAN_FILE_N'
             self.vd.accumulated_table = []  # Reset accumulated table at start of N-side check_trim
         elif (pol == 'P' or pol == '1'):
             pol_str = 'holes'
             pol_calib = 1
-            info = 'PSCAN_FILE_P'
         else:
             log.error("Please check the polarity is correct: (ex: string 'N' or '0', 'P' or '1')")
             return -1
             
-        self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
-        
         if check_continue and not check_continue():
             log.info("check_trim aborted after initialization")
             return -1
@@ -955,7 +950,7 @@ class OperatingFunctions:
         if not hasattr(self.vd, 'accumulated_table') or self.vd.accumulated_table is None:
             self.vd.accumulated_table = []
 
-        table_labels = ['HW_Addr', 'Polarity', 'Thr (e)', 'Thr_std (e)', 'Gain (e/LSB)', 'Gain_std (e/LSB)', 'ENC (e)', 'ENC_std (e)', 'Q_score', 'Odd_failed', 'Even_failed']
+        table_labels = ['Filename', 'HW_Addr', 'Polarity', 'Thr (e)', 'Thr_std (e)', 'Gain (e/LSB)', 'Gain_std (e/LSB)', 'ENC (e)', 'ENC_std (e)', 'Q_score', 'Odd_failed', 'Even_failed']
         
         log.info(f"Starting check_trim for {total_iterations} ASICs on {pol_str} side")
 
@@ -1029,10 +1024,6 @@ class OperatingFunctions:
                             return -1
                         
                         if pscan_filename:
-                            info = "PSCAN_ASIC_HW_ADDR_{}: {}".format(asic_hw_addr, pscan_filename)
-                            self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
-                            self.df.write_log_file(self.vd.module_dir, self.vd.module_sn, info)
-
                             log.info(f"Processing pscan file immediately for ASIC {asic_hw_addr}")
 
                             pol_for_table = 'N' if pol_str == 'elect' else 'P'
@@ -1070,15 +1061,25 @@ class OperatingFunctions:
                         progress_callback(base_progress, current_iteration, total_iterations)
                         
                     log.info(f"Completed ASIC {asic_hw_addr} ({current_iteration}/{total_iterations})")
-                else:
-                    pass
-                    #info = "SKIP_PSCAN_ASIC_HW_ADDR_{}".format(asic_hw_addr)
-                    #log.info(info)
-                    #self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
-                    #self.df.write_log_file(self.vd.module_dir, self.vd.module_sn, info)
                     
         log.info(f"check_trim completed for {pol_str} side: {current_iteration}/{total_iterations} ASICs processed")
         log.info(f"Final accumulated table ({len(self.vd.accumulated_table)} entries):\n{tabulate(self.vd.accumulated_table, headers=table_labels, tablefmt='simple', floatfmt='.0f')}")
+        
+        # Write complete table to datafile only at the end when P-side is complete
+        if (pol == 'P' or pol == '1') and self.vd.accumulated_table:
+            info = "PSCAN_RESULTS_TABLE"
+            self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
+            
+            # Write table header
+            header_line = "\t".join(table_labels)
+            self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, header_line)
+            
+            # Write table data
+            for row in self.vd.accumulated_table:
+                row_str = "\t".join(str(item) for item in row)
+                self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, row_str)
+            
+            log.info(f"Complete PSCAN results table written to datafile ({len(self.vd.accumulated_table)} entries)")
 
     def connection_check(self, smx_l_side, conn_check_dir, pol, feb_type, cal_asic_list, nloops = 5, vref_t = 108, check_continue=None):
         # Function to check the connectivy of each channel by counting noise hits at a lower threshold

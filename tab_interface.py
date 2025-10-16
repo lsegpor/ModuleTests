@@ -2192,14 +2192,15 @@ class TabInterface(QWidget):
         # Process each row of the table
         for row in table_values:
             try:
-                hw_addr = row[0]      # HW_Addr (0-7)
-                polarity = row[1]     # Polarity ('N' o 'P')
-                thr_mean = row[2]     # Thr (e)
-                thr_std = row[3]      # Thr_std (e)
-                gain_mean = row[4]    # Gain (e/LSB)
-                gain_std = row[5]     # Gain_std (e/LSB)
-                enc_mean = row[6]     # ENC (e)
-                enc_std = row[7]      # ENC_std (e)
+                filename = row[0]     # Filename (nuevo)
+                hw_addr = row[1]      # HW_Addr (0-7)
+                polarity = row[2]     # Polarity ('N' o 'P')
+                thr_mean = row[3]     # Thr (e)
+                thr_std = row[4]      # Thr_std (e)
+                gain_mean = row[5]    # Gain (e/LSB)
+                gain_std = row[6]     # Gain_std (e/LSB)
+                enc_mean = row[7]     # ENC (e)
+                enc_std = row[8]      # ENC_std (e)
 
                 if polarity == 'N':
                     x_index = nside_hw_to_plot.get(hw_addr)
@@ -2240,7 +2241,7 @@ class TabInterface(QWidget):
 
         Parameters:
         - table_values: list of lists with the table data
-                    Format: [HW_Addr, Polarity, Thr(e), Thr_std(e), Gain(e/LSB), Gain_std(e/LSB), ENC(e), ENC_std(e), ...]
+                    Format: [Filename, HW_Addr, Polarity, Thr(e), Thr_std(e), Gain(e/LSB), Gain_std(e/LSB), ENC(e), ENC_std(e), ...]
         """
 
         # Process the table data
