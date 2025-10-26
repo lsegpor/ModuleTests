@@ -1067,6 +1067,7 @@ class OperatingFunctions:
         
         # Write complete table to datafile only at the end when P-side is complete
         if (pol == 'P' or pol == '1') and self.vd.accumulated_table:
+            self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, "")
             info = "PSCAN_RESULTS_TABLE"
             self.df.write_data_file(self.vd.module_dir, self.vd.module_sn_tmp, info)
             
